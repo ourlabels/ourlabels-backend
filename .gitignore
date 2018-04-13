@@ -62,3 +62,7 @@ typings/
 
 public/static/
 uploads/*
+.vscode/*
+.idea/*
+.vscode
+.idea
