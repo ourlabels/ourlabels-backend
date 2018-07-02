@@ -3,7 +3,7 @@ const mongoose = require("../model/mongooseModels.js");
 const fs = require("fs");
 let project_id = 11;
 fs.mkdirSync(`./uploads/${project_id}`)
-const findAndUpdate = async () => {
+const moveImages = async () => {
   try {
     let project = await mongoose.Projects.findOne({ project_id });
     let seq_len = project.sequences.length;
@@ -23,4 +23,4 @@ const findAndUpdate = async () => {
   }
 };
 
-findAndUpdate();
+moveImages();
