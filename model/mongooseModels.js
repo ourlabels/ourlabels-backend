@@ -18,7 +18,9 @@ const ClassificationSchema = new mongoose.Schema({
     type: String,
     index: true
   },
-  type: Number, // 0 for labeling, 1 for verification of labeling, 2 for analysis of sign
+  verified_id: String, // id of user verified
+  verified_date: Date,
+  type: Number, // 0 for labeling, 1 for verification of labeling, 2 for analysis of sign,
   boxes: {
     type: [BoxSchema],
     default: []
@@ -32,35 +34,64 @@ const ImageSchema = new mongoose.Schema(
       type: String,
       index: true
     },
-    file: String,
+    file: String, // not the full path, but the file name
     date: Date,
     size: Number,
     classifications: [ClassificationSchema]
   },
   { collection: "Images" }
 );
-
 const ImageSequenceSchema = new mongoose.Schema(
   {
     sequence: {
       type: String,
       index: true
     },
-    images: [ImageSchema]
+    video: {
+      type: Boolean
+    },
+    images: [ImageSchema],
+    segmentsX: Number,
+    segmentsY: Number
   },
   { collection: "ImageSequences" }
 );
+const ProjectSchema = new mongoose.Schema(
+  {
+    project_id: Number,
+    sequences: [ImageSequenceSchema]
+  },
+  { collection: "Projects" }
+);
+const LabelDocSchema = new mongoose.Schema(
+  {
+    color: String,
+    type: String,
+    description: String
+  },
+  { collection: "LabelDocs" }
+);
 
-const Images = mongoose.model("Images", ImageSchema);
-const ImageSequences = mongoose.model("ImageSequences", ImageSequenceSchema);
-const Classifications = mongoose.model("Classifications", ClassificationSchema);
-const Boxes = mongoose.model("Boxes", BoxSchema);
+const LabelSetsSchema = new mongoose.Schema(
+  {
+    project: { type: String, index: true },
+    labels: { type: [LabelDocSchema] }
+  },
+  { collection: "LabelSets" }
+);
 
-mongoose.connect(uri, {
-  user: process.env.MONGO_USERNAME,
-  pass: process.env.MONGO_PASSWORD
-});
+const Projects = mongoose.model("Projects", ProjectSchema);
+const LabelSets = mongoose.model("LabelSets", LabelSetsSchema);
+
+mongoose.connect(
+  uri,
+  {
+    user: process.env.MONGO_USERNAME,
+    pass: process.env.MONGO_PASSWORD
+  }
+);
 module.exports = {
-  ImageSequences: ImageSequences,
+  Projects: Projects,
+  LabelSets: LabelSets,
   ObjectId: mongoose.Types.ObjectId
 };

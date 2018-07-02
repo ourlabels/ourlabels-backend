@@ -54,7 +54,6 @@ app.use(passport.initialize());
 app.use(passport.session());
 passport.use(
   new Strategy(function(username, password, cb) {
-    console.log("in local strategy");
     db.ourlabelusers
       .findOne({ where: { username: { [Op.eq]: username } } })
       .then(user => {
@@ -71,12 +70,10 @@ passport.use(
           db.ourlabelusers
             .findOne({ where: { email: { [Op.eq]: username } } })
             .then(userbyemail => {
-              winston.log("error", userbyemail);
               if (!userbyemail) {
                 return cb(null, false);
               } else {
                 if (bcrypt.compareSync(password, userbyemail.password)) {
-                  winston.log("error", "correctly compared");
                   return cb(null, userbyemail);
                 }
                 return cb(null, false);

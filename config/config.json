@@ -1,0 +1,26 @@
+{
+  "development": {
+    "username": "ourlabels",
+    "password": "4ztS^DliRX#ChsB*A5",
+    "database": "ourlabels",
+    "host": "curbmap.cslxtu6cu5ed.us-west-2.rds.amazonaws.com",
+    "port": 9020,
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "ourlabels",
+    "password": "4ztS^DliRX#ChsB*A5",
+    "database": "ourlabels",
+    "host": "curbmap.cslxtu6cu5ed.us-west-2.rds.amazonaws.com",
+    "port": 9020,
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "ourlabels",
+    "password": "4ztS^DliRX#ChsB*A5",
+    "database": "ourlabels",
+    "host": "curbmap.cslxtu6cu5ed.us-west-2.rds.amazonaws.com",
+    "port": 9020,
+    "dialect": "postgres"
+  }
+}
