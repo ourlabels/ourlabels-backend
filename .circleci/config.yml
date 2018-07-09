@@ -1,0 +1,41 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/community-label-node
+    docker:
+      - image: circleci/node:latest
+    steps:
+      - checkout
+      - restore_cache:
+          key: depsx-{{ .Branch }}-{{ checksum "package.json" }}
+      - run:
+          name: NPM install
+          command: |
+            npm install
+      - save_cache:
+          key: depsx-{{ .Branch }}-{{ checksum "package.json" }}
+          paths:
+            - "node_modules"
+            - "/usr/local/bin"
+  deploy:
+    machine: 
+      enabled: true
+    steps:
+      - add_ssh_keys:
+            fingerprints:
+              - "89:1c:aa:cf:fe:02:0d:aa:42:78:8a:98:57:9e:f9:48"
+      - run:
+            name: Deploy over SSH
+            command: |
+                ssh -f $SSH_USER@$SSH_HOST "./deploy.sh"
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
