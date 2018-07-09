@@ -18,7 +18,6 @@ const regexpEmail = /^[_A-Za-z0-9-+]+(.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(.[A-Za-z0-
 const ensure = require("connect-ensure-login");
 const maxSize = 15 * Math.pow(2, 20); // 16 MB limit, but keep to 15 to be safe
 const multer = require("multer");
-const allowed_emails = process.env.ALLOWEDEMAILS.split(",");
 const rimraf = require("rimraf");
 var storage = multer.diskStorage({
   destination: function(req, file, cb) {
@@ -1039,12 +1038,15 @@ router.get("/getRects", ensure.ensureLoggedIn(), async (req, res, next) => {
   }
 });
 router.post("/verifyRects", ensure.ensureLoggedIn(), async (req, res, next) => {
+  let original_verified = null;
+  let verified_changed = null;
+  let original_verifier = null;
+  let verifier_changed = null;
   try {
     let seq = req.user.last_seq;
     let idx = req.user.last_idx;
     let project_id = req.user.current_project;
     let project = await mongoose.Projects.findOne({ project_id });
-    let user_score = req.user.score;
     let seq_index = -1;
     project.sequences.forEach((seq_val, idx) => {
       if (seq_val._id.toString() === seq) {
@@ -1056,10 +1058,69 @@ router.post("/verifyRects", ensure.ensureLoggedIn(), async (req, res, next) => {
     }
     const idx_last_classification =
       project.sequences[seq_index].images[idx].classifications.length - 1;
+    let classification =
+      project.sequences[seq_index].images[idx].classifications[
+        idx_last_classification
+      ];
+    if (classification.userid === req.user.id) {
+      // cannot verify your own annotations
+      throw "401";
+    }
+    console.log(classification.userid);
+    let verified_user = await db.ourlabelusers.findOne({
+      where: { id: { [Op.eq]: classification.userid } }
+    });
+    console.log(verified_user);
+    if (!verified_user) {
+      // user does not exist, or no longer exists so nobody to give points to
+      throw "404";
+    }
+    original_verified = verified_user.score;
+    verified_user.score = verified_user.score + 10;
+    await verified_user.save();
+    verified_changed = verified_user;
+    original_verifier = req.user.score;
+    req.user.score = req.user.score + 1;
+    await req.user.save();
+    verifier_changed = req.user;
     project.sequences[seq_index].images[idx].classifications[
       idx_last_classification
-    ];
-  } catch (err) {}
+    ].verified_id =
+      req.user.id;
+    project.sequences[seq_index].images[idx].classifications[
+      idx_last_classification
+    ].verified_date =
+      req.user.id;
+    await project.save();
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    if (err === "401") {
+      return res
+        .status(401)
+        .json({ success: true, error: "Cannot verify your own annotations" });
+    } else if (err === "404") {
+      return res
+        .status(404)
+        .json({ success: true, error: "User no longer exists" });
+    }
+    if (verified_changed) {
+      verified_changed.score = original_verified;
+      if (original_verifier != null) {
+        verifier_changed.score = original_verifier;
+      }
+      try {
+        await verified_changed.save();
+        await verifier_changed.save();
+      } catch (err_verified) {
+        return res
+          .status(500)
+          .json({ success: false, error: "Could not revert user" });
+      }
+    }
+    return res
+      .status(500)
+      .json({ success: false, error: `Server error: ${err}` });
+  }
 });
 router.post("/addRects", ensure.ensureLoggedIn(), async (req, res, next) => {
   try {
