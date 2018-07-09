@@ -647,7 +647,6 @@ router.post(
       if (!joined.includes(project.id)) {
         joined.push(project.id);
       }
-      console.log("JOINED:", joined, typeof project.id, project.id);
       let mongoProjects = await mongoose.Projects.aggregate([
         {
           $match: {
@@ -670,7 +669,6 @@ router.post(
         throw "403";
       }
       let seqId = mongoProjects[0].sequences._id;
-      console.log(seqId);
       await req.user.update({
         current_project: project.id,
         joined,
@@ -1010,7 +1008,6 @@ router.get("/getRects", ensure.ensureLoggedIn(), async (req, res, next) => {
   let offset = parseInt(req.query.offset);
   let idx = req.user.last_idx + offset; // Index
   let project_id = req.user.current_project;
-  console.log(seq, offset, idx, project_id);
   try {
     if (project_id == null || seq == null) {
       throw "404";
@@ -1027,7 +1024,6 @@ router.get("/getRects", ensure.ensureLoggedIn(), async (req, res, next) => {
       { $unwind: "$images" }
     ]);
     const classifications = avail[0].images.classifications;
-    console.log("INDEX in GET RECTS XXX:", idx, classifications);
     let boxes = [];
     if (avail[0].images.classifications.length !== 0) {
       boxes = classifications[classifications.length - 1].boxes;
@@ -1066,11 +1062,9 @@ router.post("/verifyRects", ensure.ensureLoggedIn(), async (req, res, next) => {
       // cannot verify your own annotations
       throw "401";
     }
-    console.log(classification.userid);
     let verified_user = await db.ourlabelusers.findOne({
       where: { id: { [Op.eq]: classification.userid } }
     });
-    console.log(verified_user);
     if (!verified_user) {
       // user does not exist, or no longer exists so nobody to give points to
       throw "404";
@@ -1306,11 +1300,9 @@ router.post(
           }
         }
       ]);
-      console.log("SEQS XXXYYYIII:", seqs);
       if (seqs.length === 0) {
         throw "404";
       }
-      console.log("HERE IN SEQUENCE UPDATE");
       await req.user.update({
         last_seq: seqs[0].sequences._id.toString(),
         last_idx: 0
@@ -1357,7 +1349,6 @@ router.get("/getSequences", ensure.ensureLoggedIn(), async (req, res, next) => {
 router.get("/getImage", ensure.ensureLoggedIn(), async (req, res, next) => {
   let seq = req.user.last_seq; // ObjectId
   let idx = req.user.last_idx; // Index
-  console.log("GET IMAGE: IDX:", idx);
   let project_id = req.user.current_project;
   try {
     if (project_id == null || seq == null) {
@@ -1397,7 +1388,6 @@ router.get("/getImage", ensure.ensureLoggedIn(), async (req, res, next) => {
             avail[0].images[0].file
           }`
       );
-      console.log("YZYZY: ", avail[0].images[0]._id.toString());
       res.status(200).json({
         success: true,
         imageid: avail[0].images[0]._id.toString(),
