@@ -7,16 +7,15 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: depsx-{{ .Branch }}-{{ checksum "package.json" }}
+          key: v1-{{ .Branch }}-{{ checksum "package.json" }}
       - run:
           name: NPM install
           command: |
             npm install
       - save_cache:
-          key: depsx-{{ .Branch }}-{{ checksum "package.json" }}
+          key: v1-{{ .Branch }}-{{ checksum "package.json" }}
           paths:
             - "node_modules"
-            - "/usr/local/bin"
   deploy:
     machine: 
       enabled: true
