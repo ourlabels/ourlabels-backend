@@ -12,6 +12,9 @@ const fs = require("fs");
 const saltRounds = 12;
 const winston = require("winston");
 const Sequelize = require("sequelize");
+const fileType = require("file-type");
+const readChunk = require("read-chunk");
+const { spawnSync } = require("child_process");
 const Op = Sequelize.Op;
 
 const regexpEmail = /^[_A-Za-z0-9-+]+(.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(.[A-Za-z0-9]+)*(.[A-Za-z]{2,})$/;
@@ -28,6 +31,10 @@ var storage = multer.diskStorage({
       cb(null, `${req.user.id}-${Date.now()}.jpg`.toLowerCase());
     } else if (/.mp4|.mpeg|.mpg|.ts/.test(file.originalname.toLowerCase())) {
       cb(null, file.originalname.toLowerCase());
+    } else if (
+      /.tar.bz2|.tbz2|.tar.gz|.tgz/.test(file.originalname.toLocaleLowerCase())
+    ) {
+      cb(null, file.originalname.toLocaleLowerCase());
     } else {
       cb(null, "x");
     }
@@ -255,18 +262,24 @@ router.post("/addLabels", ensure.ensureLoggedIn(), async (req, res, next) => {
         if (
           typeof label !== "object" ||
           !label.type ||
-          !label.color ||
+          label.r == null ||
+          label.g == null ||
+          label.b == null ||
+          label.a == null ||
           !label.description
         ) {
-          throw "incorrect array of types {type, color, description}";
+          throw "incorrect array of types {type, r, g, b, a, description}";
         }
       }
-      let newLabelSet = new mongoose.LabelSets({
-        project: req.user.current_project,
-        labels: req.body.labels
-      });
-      await newLabelSet.save();
-      res.status(200).json({ success: true, labels: newLabelSet.labels });
+      let labelSet = await mongoose.LabelSets.findOne({ project: req.user.current_project });
+      if (labelSet == null) {
+        labelSet = new mongoose.LabelSets({
+          project: req.user.current_project
+        });
+      }
+      labelSet.labels = req.body.labels;
+      await labelSet.save();
+      res.status(200).json({ success: true, labels: labelSet.labels });
     } catch (err) {
       res.status(500).json({ success: false, error: `System error: ${err}` });
     }
@@ -668,7 +681,8 @@ router.post(
         // no sequences!
         throw "403";
       }
-      let seqId = mongoProjects[0].sequences._id;
+      console.log("NOT 403:", mongoProjects);
+      let seqId = mongoProjects[0].sequences._id.toString();
       await req.user.update({
         current_project: project.id,
         joined,
@@ -793,6 +807,7 @@ router.post("/addProject", ensure.ensureLoggedIn(), async (req, res, next) => {
     res.status(500).json({ success: false, error: `Server error: ${err}` });
   }
 });
+
 router.post(
   "/updateProject",
   ensure.ensureLoggedIn(),
@@ -885,11 +900,12 @@ router.post(
       let requested = requestedUsers.map(user => {
         return user.id;
       });
-      let public = req.body.public;
-
+      let pub = req.body.public;
+      let owner = project.owner;
       let new_owner = await db.ourlabelusers.findOne({
         where: { username: { [Op.eq]: req.body.owner } }
       });
+
       if (new_owner) {
         owner = new_owner.id;
       }
@@ -929,30 +945,20 @@ router.post(
       }
       for (let updSeq of Object.keys(updateSeqs)) {
         let seq = updateSeqs[updSeq];
+        const newDirectory = `uploads/${project.id}/${seq.name}`;
         if (fs.existsSync(`uploads/${project.id}/${updSeq}`)) {
           if (updSeq !== seq.name) {
-            fs.renameSync(
-              `uploads/${project.id}/${updSeq}`,
-              `uploads/${project.id}/${seq.name}`
-            );
+            fs.renameSync(`uploads/${project.id}/${updSeq}`, newDirectory);
           }
         } else {
-          fs.mkdirSync(`uploads/${project.id}/${seq.name}`);
+          fs.mkdirSync(newDirectory);
         }
-        let images = [];
-        for (let i = seq.begin; i <= seq.end; i += 1) {
-          fs.renameSync(
-            req.files[i].path,
-            `uploads/${project.id}/${seq.name}/${req.files[i].filename}`
-          );
-          images.push({
-            userid: req.user.id,
-            file: req.files[i].filename,
-            date: new Date(),
-            size: req.files[i].size,
-            classifications: []
-          });
-        }
+        let images = processSeqImages(
+          req.files,
+          seq,
+          newDirectory,
+          req.user.id
+        );
         let i = 0;
         for (; i < sequences.length; i += 1) {
           if (sequences[i].sequence === updSeq) {
@@ -969,21 +975,17 @@ router.post(
       }
       for (let newSeq of Object.keys(newSeqs)) {
         let seq = newSeqs[newSeq];
-        fs.mkdirSync(`uploads/${project.id}/${seq.name}`);
-        let images = [];
-        for (let i = seq.begin; i <= seq.end; i += 1) {
-          fs.renameSync(
-            req.files[i].path,
-            `uploads/${project.id}/${seq.name}/${req.files[i].filename}`
-          );
-          images.push({
-            userid: req.user.id,
-            file: req.files[i].filename,
-            date: new Date(),
-            size: req.files[i].size,
-            classifications: []
-          });
+        const newDirectory = `uploads/${project.id}/${seq.name}`;
+        if (fs.existsSync(newDirectory)) {
+          rimraf.sync(newDirectory);
         }
+        fs.mkdirSync(newDirectory);
+        const images = processSeqImages(
+          req.files,
+          seq,
+          newDirectory,
+          req.user.id
+        );
         sequences.push({
           sequence: seq.name,
           video: seq.video,
@@ -994,7 +996,16 @@ router.post(
       }
       mongoProject.sequences = sequences;
       await mongoProject.save();
-      await project.save();
+      await project.update({
+        public: pub,
+        type,
+        description,
+        full_description,
+        owner,
+        allowed,
+        requested,
+        refused
+      });
       res.status(200).json({ success: true });
     } catch (err) {
       winston.log("error", err);
@@ -1002,7 +1013,6 @@ router.post(
     }
   }
 );
-
 router.get("/getRects", ensure.ensureLoggedIn(), async (req, res, next) => {
   let seq = req.user.last_seq; // ObjectId
   let offset = parseInt(req.query.offset);
@@ -1172,108 +1182,6 @@ const generateBoxesFromBoxes = function(boxes) {
   }
   return newBoxes;
 };
-router.post(
-  "/addVideos",
-  ensure.ensureLoggedIn(),
-  upload.array("videos", 24),
-  async (req, res, next) => {
-    try {
-      if (
-        req.body.project_id == null ||
-        req.body.sequences == null ||
-        typeof req.body.sequences !== "object" ||
-        req.body.sequences.length !== req.files.length
-      ) {
-        throw "400";
-      }
-      const { project_id, sequences } = req.body;
-      let project = await db.projects.findOne({
-        where: { id: { [Op.eq]: project_id } }
-      });
-      if (!project) {
-        throw "404";
-      }
-      if (project.owner !== req.user.id) {
-        throw "401";
-      }
-      for (let file of req.files) {
-        if (!/.mp4|.mpeg|.mpg|.ts/.test(file.filename)) {
-          throw "402"; // wrong file type
-        }
-      }
-      const { spawn } = require("child_process");
-      let i = 0;
-      for (let file of req.files) {
-        let seqname = sequences[i];
-        let destination = `${file.destination}${project_id}/${seqname}/`;
-        fs.mkdirSync(destination);
-        const ffmpeg = spawn("ffmpeg", [
-          "-i",
-          file.path,
-          "-r 1",
-          `${prefix}%04d.jpg`
-        ]);
-        ffmpeg.on("close", code => {
-          winston.log("info", `Child process exited with ${code}`);
-        });
-      }
-      // project exists, files are correct format
-      // NOW move files to processing folder, rename files to sequence names and
-    } catch (err) {
-      // do something with error
-      winston.log("error", `${err}`);
-      // always delete all updloaded files if error on one
-      for (let file of req.files) {
-        if (fs.existsSync(`${file.path}`)) {
-          fs.unlinkSync(`${file.path}`);
-        }
-      }
-    }
-  }
-);
-
-router.post(
-  "/addImage",
-  ensure.ensureLoggedIn(),
-  upload.single("image"),
-  async (req, res, next) => {
-    let seq = req.body.seq;
-    let id = req.body.id;
-    let seg_x = req.body.seg_x ? req.body.seg_x : 1;
-    let seg_y = req.body.seg_y ? req.body.seg_y : 1;
-    let foundSequence = await mongoose.ImageSequences.findOne({
-      sequence: seq
-    });
-    if (foundSequence === null) {
-      foundSequence = new mongoose.ImageSequences({
-        sequence: seq,
-        images: [],
-        segmentsX: 1,
-        segmentsY: 1
-      });
-    }
-    foundSequence.images.push({
-      userid: req.user.id,
-      file: req.file.filename,
-      imageid: id,
-      date: new Date(),
-      size: req.file.size,
-      classifications: []
-    });
-
-    try {
-      await foundSequence.save();
-      return res.status(200).json({ success: true });
-    } catch (err) {
-      winston.log(
-        "error",
-        "error saving file to mongo from user id: ",
-        req.user.id
-      );
-    }
-    return res.status(500).json({ success: false });
-  }
-);
 
 router.post(
   "/updateSequence",
@@ -1402,6 +1310,222 @@ router.get("/getImage", ensure.ensureLoggedIn(), async (req, res, next) => {
     res.status(500).json({ success: false, error: "something happened, oops" });
   }
 });
+
+function checkName(filePath, isVideo) {
+  const filePathSplit = filePath.split("/");
+  const filename = filePathSplit[filePathSplit.length - 1];
+  const videoRegex = new RegExp(/.mp4|.mpg|.mpeg|.m4v|.ts|.avi/);
+  const imageRegex = new RegExp(/.png|.jpg|.jpeg/);
+  const zippedRegex = new RegExp(/.tar.gz|.tar.bz2|.tgz|.tbz2/);
+  if (isVideo) {
+    if (videoRegex.test(filename)) {
+      return true;
+    } else if (zippedRegex.test(filename)) {
+      let truth = checkCompressedFiles(filePath, videoRegex);
+      return truth;
+    } else {
+      return false;
+    }
+  } else {
+    if (imageRegex.test(filename)) {
+      return true;
+    } else if (zippedRegex.test(filename)) {
+      return checkCompressedFiles(filePath, imageRegex);
+    } else {
+      return false;
+    }
+  }
+}
+
+function checkCompressedFiles(filePath, regex) {
+  const files = spawnSync("tar", ["-jtf", filePath]);
+  const files_splitlines = files.stdout
+    .toString("utf8")
+    .split("\n")
+    .map(file => {
+      return file.trim();
+    })
+    .filter(file => {
+      return file !== "";
+    });
+  const not_correct = files_splitlines.filter(file => {
+    return !regex.test(file);
+  });
+  if (not_correct.length > 0) {
+    return false;
+  }
+  return true;
+}
+
+function isVideoFile(path) {
+  let buffer = readChunk.sync(path, 0, 4100);
+  let file_type = fileType(buffer)["ext"];
+  const ext_exists = ["mpg", "mp4", "m4v", "mp2", "avi", "mts"].includes(
+    file_type
+  );
+  return ext_exists;
+}
+
+function isImageFile(path) {
+  let buffer = readChunk.sync(path, 0, 4100);
+  let file_type = fileType(buffer)["ext"];
+  return ["jpg", "png"].includes(file_type);
+}
+
+function decompressContent(filePath, newDirectory, isVideo) {
+  const tar_x_sync = spawnSync("tar", ["-jxvf", filePath, "-C", newDirectory]);
+  const files_decompressed = tar_x_sync["output"]
+    .filter(file => {
+      return file != null;
+    })
+    .map(file => {
+      let fstring = file.toString("utf8");
+      if (fstring !== "" && fstring.includes("x")) {
+        let f = fstring.substr(1).trim();
+        return f;
+      } else {
+        return fstring;
+      }
+    })
+    .filter(file => {
+      return file !== "";
+    });
+  if (isVideo) {
+    if (files_decompressed.length > 1 || files_decompressed.length === 0) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      for (let file of files_decompressed) {
+        let newPath = `${newDirectory}/${file}`;
+        if (fs.existsSync(newPath)) {
+          fs.unlinkSync(newPath);
+        }
+      }
+      return null;
+    }
+    let newVideoPath = `${newDirectory}/${files_decompressed[0]}`;
+    if (isVideoFile(newVideoPath)) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return [`${files_decompressed[0]}`];
+    }
+  } else {
+    let files_decompressed_tested = [];
+    for (let file of files_decompressed) {
+      let newPath = `${newDirectory}/${file}`;
+      if (isImageFile(newPath)) {
+        files_decompressed_tested.push(file);
+      } else {
+        if (fs.existsSync(newPath)) {
+          fs.unlinkSync(newPath);
+        }
+      }
+    }
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    return files_decompressed_tested;
+  }
+}
+
+function processImage(newDirectory, filename) {
+  const filePath = `${newDirectory}/${filename}`;
+  let files = [];
+  let images = [];
+  if (/.gz|.bz2/.test(filename)) {
+    files = decompressContent(filePath, newDirectory, false);
+  } else {
+    if (isImageFile(filePath)) {
+      files = [filename];
+    }
+  }
+  for (let file of files) {
+    let newFilePath = `${newDirectory}/${file}`;
+    let stat = fs.statSync(newFilePath);
+    images.push({ filename: file, size: stat.size });
+  }
+  return images;
+}
+
+function processVideo(newDirectory, filename, seqname) {
+  const filePath = `${newDirectory}/${filename}`;
+  let files = [];
+  if (/.gz|.bz2/.test(filename)) {
+    files = decompressContent(filePath, newDirectory, true);
+  } else {
+    if (isVideoFile(filePath)) {
+      files = [filename];
+    }
+  }
+  const newPath = `${newDirectory}/${files[0]}`;
+  const newPrefix = `${newDirectory}/${seqname}`;
+  if (files != null && files.length === 1) {
+    try {
+      const processOptions = [
+        "-i",
+        newPath,
+        "-r",
+        "1/1",
+        newPrefix + "%04d.jpg"
+      ];
+      spawnSync("ffmpeg", processOptions);
+      if (fs.existsSync(newPath)) {
+        fs.unlinkSync(newPath);
+      }
+      const ls = spawnSync("ls", ["-1", newDirectory]);
+      const lsString = ls.stdout.toString("utf8");
+      const images = lsString
+        .split("\n")
+        .map(file => {
+          let filename = file.trim();
+          let fileStats = fs.statSync(`${newDirectory}/${filename}`);
+          return { filename: filename, size: fileStats.size };
+        })
+        .filter(file => {
+          return file.filename !== "";
+        });
+      return images;
+    } catch (err) {
+      if (fs.existsSync(newPath)) {
+        fs.unlinkSync(newPath);
+      }
+      return [];
+    }
+  } else {
+    // cancel the process
+    fs.unlinkSync(newPath);
+    return [];
+  }
+}
+
+function processSeqImages(files, seq, newDirectory, userid) {
+  let images = [];
+  for (let i = seq.begin; i <= seq.end; i += 1) {
+    let processedImages = [];
+    const file = files[i];
+    const filename = file.filename;
+    const newPath = `${newDirectory}/${filename}`;
+    fs.renameSync(file.path, newPath);
+    if (seq.video && checkName(newPath, seq.video)) {
+      // process video also handles tar gz/bz2 files
+      processedImages = processVideo(newDirectory, filename, seq.name);
+    } else if (!seq.video && checkName(newPath, seq.video)) {
+      // process images, also handles tar gz/bz2 files
+      processedImages = processImage(newDirectory, filename, seq.name);
+    }
+    for (let image of processedImages) {
+      images.push({
+        userid: userid,
+        file: image.filename,
+        date: new Date(),
+        size: image.size,
+        classifications: []
+      });
+    }
+  }
+  return images;
+}
 
 function emailMeetsCriteria(email) {
   return email.match(regexpEmail);

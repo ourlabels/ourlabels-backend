@@ -65,7 +65,10 @@ const ProjectSchema = new mongoose.Schema(
 );
 const LabelDocSchema = new mongoose.Schema(
   {
-    color: String,
+    r: Number,
+    g: Number,
+    b: Number,
+    a: Number,
     type: String,
     description: String
   },
