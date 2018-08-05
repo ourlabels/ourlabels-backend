@@ -1,0 +1,840 @@
+openapi: 3.0.0
+info:
+  description: Ourlabels API documentation
+  version: 1.0.0
+  title: Ourlabels API Documentation
+  termsOfService: 'https://ourlabels.org/terms/'
+  contact:
+    email: ourlabels@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+paths:
+  /add/annotations:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddAnnotationsRequestBody'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /add/labels:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddLabelsRequestBody'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /add/project:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProjectRequestBody'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /add/type:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTypeRequestBody'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /auth/login:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestBody'
+        required: true
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Unauthorized
+  /auth/logout:
+    post:
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized or not logged in
+  /auth/signup:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequestBody'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Incorrect body parameters
+  /auth/user:
+    get:
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /change/project:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeProjectRequestBody'
+      responses:
+        '200': 
+          description: OK Changed project
+  /get/annotations:
+    get:
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: -1
+            maximum: 1
+          required: true
+          example: 0
+          description: Get most recent annotation for previous, next, or current image 
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAnnotationsResponse'
+        '400':
+          description: Please select a project first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No un-annotated images found for project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /get/image:
+    get:
+      security:
+        - BearerAuth: []
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetImageResponse'
+        '400':
+          description: Please select a project first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No un-annotated images found for project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /get/labels:
+    get:
+      security:
+        - BearerAuth: []
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLabelsResponse'
+        '400':
+          description: Please select a project first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No labels for current project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /get/projects:
+    get:
+      security:
+        - BearerAuth: []
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProjectsResponse'
+        '404':
+          description: No projects found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /get/projects/guest:
+    get:
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProjectsResponse'
+        '404':
+          description: No projects found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /get/sequences:
+    get:
+      security:
+        - BearerAuth: []
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSequencesResponse'
+        '400':
+          description: Please select a project first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No sequences for current project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /get/types:
+    get:
+      responses:
+        '200': 
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTypesResponse'
+        '400':
+          description: Please select a project first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No labels for current project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /join/project:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: integer
+      responses:
+        '200':
+          description: Successfully changed project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinProjectResponse'
+        '400':
+          description: Must include project_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No such project or unable to join
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /leave/project:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: integer
+      responses:
+        '200':
+          description: Successfully changed project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinProjectResponse'
+        '400':
+          description: Must include project_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '404':
+          description: No such project or unable to join
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse404'
+  /request/project:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_name:
+                  type: string
+              required:
+                - project_name
+      responses:
+        '200':
+          description: Successfully added to requested users for project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: No such project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+        '401':
+          description: Unable to join project because refused from project or already requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse400'
+  /update/index:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/offsetUpdateIndex'
+                - $ref: '#/components/schemas/toNumberUpdateIndex'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  newIndex:
+                    type: integer
+                    description: The new index for the user, does not change 
+  /update/project:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: OK
+  /update/role:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200': 
+          description: OK
+  /update/sequence:
+    post:
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSequenceRequest'
+      responses:
+        '200':
+          description: OK
+  /verify/annotation:
+    post:
+      responses:
+        '200':
+          description: OK
+servers:
+  - url: 'https://ourlabels.org/v1'
+  - url: 'http://localhost:59003/v1'
+components:
+  schemas:
+    AddAnnotationsRequestBody:
+      type: object
+      required: boxes
+      properties:
+        boxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Box'
+    AddLabelsRequestBody:
+      type: object
+      required: labels
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Label"
+    AddProjectRequestBody:
+      type: object
+      required:
+        - title
+        - description
+        - full_description
+        - public
+        - type
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        full_description:
+          type: string
+        public:
+          type: boolean
+        type:
+          type: integer
+          minimum: 0
+    AddTypeRequestBody:
+      type: object
+      required:
+        - video
+        - title
+      properties:
+        title:
+          type: string
+        video:
+          type: boolean
+    LoginRequestBody:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: either username or email
+        password:
+          type: string
+          description: plaintext password
+    SignupRequestBody:
+      type: object
+      required:
+        - username
+        - password
+        - email
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+          format: email
+    ChangeProjectRequestBody:
+      type: object
+      required: project_id
+      properties:
+        project_id: 
+          type: integer
+    Label:
+      type: object
+      properties:
+        type: 
+          type: string
+          example: mouse_body
+        description:
+          type: string
+          example: The body of a mouse, not including the head
+        r:
+          type: integer
+          minimum: 0
+          maximum: 255
+        g:
+          type: integer
+          minimum: 0
+          maximum: 255
+        b:
+          type: integer
+          minimum: 0
+          maximum: 255
+        a:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1        
+    Box:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        w:
+          type: number
+        h:
+          type: number
+        type:
+          type: string
+          example: mouse_body
+      required:
+        - x
+        - y
+        - w
+        - h
+        - type
+    ProjectResponse:
+      type: object
+      properties:
+        id: 
+          type: integer
+        title: 
+          type: string
+        description: 
+          type: string
+        full_description:
+          type: string
+        type:
+          type: integer
+        public:
+          type: boolean
+        featured:
+          type: boolean
+        owner:
+          type: boolean
+          description: If user is logged in, indicates if user is owner of project
+        allowed:
+          type: boolean
+          description: If user is logged in, indicates if user is allowed to join project
+        requested:
+          type: boolean
+          description: If user is logged in, indicates if user has requested access to project
+        refused:
+          type: boolean
+          description: If user is logged in, indicates if user had request refused
+        joined:
+          type: boolean
+          description: If user is logged in, indicates if user has joined project
+        current_project:
+          type: boolean
+          description: If user is logged in, indicates if project is current project for user
+    SequenceResponse:
+      type: object
+      properties:
+        sequence:
+          type: string
+    TypeResponse:
+      type: object
+      properties:
+        id: 
+          type: integer
+        type:
+          type: string
+        video:
+          type: boolean
+    BoxResponse:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        width:
+          type: number
+        height:
+          type: number
+        type_key:
+          type: string,
+        justCreated:
+          type: boolean,
+        id:
+          type: number      
+    GetAnnotationsResponse:
+      type: object
+      properties:
+        success: 
+          type: boolean
+        idx: 
+          type: integer
+        boxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoxResponse'
+    GetImageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        imageid:
+          type: string
+        image:
+          type: string
+        sequence:
+          type: string
+        index: 
+          type: integer
+        count:
+          type: integer
+    GetLabelsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Label"
+    GetProjectsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectResponse'
+    GetSequencesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        sequences:
+          type: array
+          items:
+            $ref: '#/components/schemas/SequenceResponse'
+    GetTypesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TypeResponse'
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+    ApiResponse400:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: array
+          items: 
+            type: object
+    ApiResponse404:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        username:
+          type: string
+          description: registered username
+        id:
+          type: integer
+          description: user id
+        score:
+          type: integer
+          description: number of points user has accrued
+        email:
+          type: string
+          description: email address for registered user
+        current_project:
+          type: integer
+          description: Id for current project of user
+        role:
+          type: string
+          description: Role type (ENUM), either ROLE_USER, ROLE_OWNER, ROLE_ADMIN, ROLE_MANAGER
+    JoinProjectResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        joined:
+          type: array
+          items: 
+            type: integer
+        current_project:
+          type: integer
+    offsetUpdateIndex:
+      type: object
+      properties:
+        offset:
+          type: integer
+    toNumberUpdateIndex:
+      type: object
+      properties:
+        toNumber:
+          type: integer
+    UpdateProjectRequest:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+        project_id:
+          description: The project id (integer row) being updated
+          type: integer
+        public:
+          description: Whether the project will be visible to every user
+          type: boolean
+        owner:
+          description: Either current owner or new owner, must be in allowed list
+          type: string
+        description:
+          description: Short description of the project
+          type: string
+        full_description:
+          description: Long description of the project
+          type: string
+        type:
+          description: Integer id (row) type
+          type: integer
+        allowed:
+          description: Array of usernames allowed to join the project
+          type: array
+          items: 
+            type: string
+        refused:
+          description: Array of usernames to be disallowed
+          type: array
+          items: 
+            type: string
+        requested:
+          description: New set of users who have not yet been refused or allowed
+          type: array
+          items: 
+            type: string
+        new:
+          description: New sequences added to the project
+          type: string
+        update:
+          description: Updated already existing sequence (maybe added new images or changed sequence name)
+          type: string
+        delete:
+          description: Deleted sequences for project
+          type: string
+    UpdateRoleRequest:
+      type: object
+      properties:
+        username:
+          description: Username of user whose role is to change
+          type: string
+        role_to_change_to:
+          type: string
+          description: One of "ROLE_USER", "ROLE_ADMIN", "ROLE_MANAGER", must be lower level than user
+          example: ROLE_ADMIN
+    UpdateSequenceRequest:
+      type: object
+      properties:
+        sequence:
+          description: Name of sequence to change to 
+          type: string

@@ -12,10 +12,13 @@ module.exports = {
     return queryInterface.addColumn(
       "ourlabelusers",
       "joined",
-      Sequelize.ARRAY({ type: Sequelize.INTEGER, references: {
-        model: "projects",
-        key: "id"
-      }})
+      Sequelize.ARRAY({
+        type: Sequelize.INTEGER,
+        references: {
+          model: "projects",
+          key: "id"
+        }
+      })
     );
   },
 

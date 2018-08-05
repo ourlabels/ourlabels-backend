@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
@@ -9,11 +9,11 @@ module.exports = {
       Example:
       return queryInterface.createTable('users', { id: Sequelize.INTEGER });
     */
-   return queryInterface.addColumn('projects', 'public', {
-    type: Sequelize.BOOLEAN,
-    allowNull: false,
-    defaultValue: true
-  });
+    return queryInterface.addColumn("projects", "public", {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    });
   },
 
   down: (queryInterface, Sequelize) => {

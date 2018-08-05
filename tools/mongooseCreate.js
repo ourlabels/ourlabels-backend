@@ -1,4 +1,5 @@
 require("dotenv").config({ path: "../config/ourlabels.env" });
+const winston = require("winston")
 const mongoose = require("../model/mongooseModels.js");
 const fs = require("fs");
 const dir = "./uploads/11";
@@ -37,10 +38,10 @@ paths = paths.forEach(path => {
 const create = async () => {
   try {
     await project.save();
-    console.log("DONE SAVING")
+    winston.log("info", "DONE SAVING");
   } catch (err) {
-    console.log(err);
+    winston.log("error", err);
   }
 };
 
-create()
+create();

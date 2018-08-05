@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
 const favicon = require("serve-favicon");
-const logger = require("morgan");
+const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 require("dotenv").config({ path: "../config/ourlabels.env" });
@@ -21,7 +21,23 @@ app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(require("morgan")("combined"));
+morgan.token('id', function getId(req) {
+  return req.id
+});
+const loggerFormat = ':id [:date[web]] ":method :url" :status :response-time ms';
+app.use(morgan(loggerFormat, {
+  skip: function (req, res) {
+    return res.statusCode < 400
+  },
+  stream: process.stderr
+}));
+
+app.use(morgan(loggerFormat, {
+  skip: function (req, res) {
+    return res.statusCode >= 400
+  },
+  stream: process.stdout
+}));
 var whitelist = [
   "http://localhost:8080",
   "http://localhost:3000",

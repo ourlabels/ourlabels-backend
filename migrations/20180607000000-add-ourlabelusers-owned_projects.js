@@ -19,7 +19,7 @@ module.exports = {
           key: "id"
         }
       }),
-      {defaultValue: []}
+      { defaultValue: [] }
     );
   },
 
