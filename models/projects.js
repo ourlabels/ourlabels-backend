@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       type: {
         type: DataTypes.INTEGER,
-        references: {model: "project_types", key: "id"},
+        references: { model: "project_types", key: "id" }
       },
       featured: {
         type: DataTypes.BOOLEAN,
@@ -54,8 +54,5 @@ module.exports = (sequelize, DataTypes) => {
     },
     {}
   );
-  projects.associate = function(models) {
-    // associations can be defined here
-  };
   return projects;
 };
