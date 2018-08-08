@@ -50,7 +50,7 @@ module.exports = {
     exists: true,
     isString: true
   },
-  "boxes.*.id": {
+  "boxes.*.name": {
     in: ["body"],
     exists: true,
     isNumeric: true

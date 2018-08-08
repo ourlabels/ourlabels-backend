@@ -10,7 +10,7 @@ const BoxSchema = new mongoose.Schema({
   height: Number,
   type_key: String,
   justCreated: Boolean,
-  id: Number
+  name: Number
 });
 
 const ClassificationSchema = new mongoose.Schema({
