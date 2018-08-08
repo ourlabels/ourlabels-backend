@@ -20,8 +20,5 @@ router.use("/request", request);
 router.use("/update", update);
 router.use("/verify", verify);
 
-router.get("/", (req, res) => {
-  res.render("index");
-});
 
 module.exports = router;
