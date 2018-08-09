@@ -1,3 +1,4 @@
+const fs = require("fs");
 function checkName(filePath, isVideo) {
   const filePathSplit = filePath.split("/");
   const filename = filePathSplit[filePathSplit.length - 1];
@@ -154,7 +155,7 @@ function processVideo(newDirectory, filename, seqname) {
         newPath,
         "-r",
         "1/1",
-        newPrefix + "%04d.jpg"
+        newPrefix + "-%05d.jpg"
       ];
       spawnSync("ffmpeg", processOptions);
       if (fs.existsSync(newPath)) {
