@@ -9,7 +9,9 @@ const BoxSchema = new mongoose.Schema({
   width: Number,
   height: Number,
   type_key: String,
-  justCreated: Boolean,
+  truncated: Boolean,
+  occluded: Boolean,
+  difficult: Boolean,
   name: Number
 });
 

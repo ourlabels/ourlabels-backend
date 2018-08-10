@@ -1,4 +1,5 @@
 const fs = require("fs");
+const spawnSync = require("child_process").spawnSync
 function checkName(filePath, isVideo) {
   const filePathSplit = filePath.split("/");
   const filename = filePathSplit[filePathSplit.length - 1];
@@ -256,9 +257,11 @@ const generateBoxesFromBoxes = function(boxes) {
       height: box.h,
       x: box.x,
       y: box.y,
-      justCreated: false,
       type_key: box.type,
-      id: box.id
+      name: box.name,
+      occluded: box.occluded,
+      truncated: box.truncated,
+      difficult: box.difficult
     });
   }
   return newBoxes;
