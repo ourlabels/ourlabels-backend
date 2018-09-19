@@ -46,6 +46,10 @@ var whitelist = [
 
 var corsDelegate = function (req, callback) {
   let i = 0;
+  if (!req.header('Origin')) {
+    callback(null, {origin: true, credentials: true})
+    return;
+  }
   for (; i< whitelist.length; i++) {
     winston.log('error', `ORIGIN: ${req.header('Origin')}`)
     if (req.header('Origin').match(whitelist[i])){
@@ -57,10 +61,7 @@ var corsDelegate = function (req, callback) {
   else
     callback(null, {origin: false, credentials: true})
 }
-var corsOptionsDelegate = (req, callback) => {
-  callback(null, {origin: true})
-}
-app.options('*', cors(corsOptionsDelegate))
+app.options('*', cors())
 app.use(cors(corsDelegate));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
