@@ -47,6 +47,7 @@ var whitelist = [
 var corsOptionsDelegate = function (req, callback) {
   let i = 0;
   for (; i< whitelist.length; i++) {
+    winston.log('error', `ORIGIN: ${req.header('Origin')}`)
     if (req.header('Origin').match(whitelist[i])){
       break;
     }
