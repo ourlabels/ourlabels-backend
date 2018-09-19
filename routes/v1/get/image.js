@@ -4,6 +4,14 @@ const winston = require("winston");
 const express = require("express");
 const router = express.Router();
 const mongoose = require("../../../model/mongooseModels");
+const AWS = require('aws-sdk');
+AWS.config.update({
+  "accessKeyId": process.env.AWS_ACCESS_KEY_S3,
+  "secretAccessKey": process.env.AWS_SECRET_ACCESS_KEY_S3,
+})
+const s3 = new AWS.S3({
+  apiVersion: '2006-03-01', region: 'us-east-2'
+});
 
 router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
   let seq = req.user.last_seq; // ObjectId
@@ -13,10 +21,12 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
     if (project_id == null || seq == null) {
       throw "400";
     }
+    console.log(idx)
     let avail = await mongoose.Projects.aggregate([
       { $match: { project_id } },
       { $unwind: "$sequences" },
       { $match: { "sequences._id": mongoose.ObjectId(seq) } },
+      { $sort: { "sequences.images.file": 1 } },
       {
         $project: {
           sequences: { sequence: 1 },
@@ -25,37 +35,24 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
         }
       }
     ]);
-    console.log(avail, __dirname)
+    console.log(avail)
     if (avail == null || avail.length === 0 || avail[0].images.length === 0) {
       res.status(404).json({ success: false, error: "no photo that matches" });
     } else {
-      if (
-        !fs.existsSync(
-          __dirname +
-            `/../../../uploads/${project_id}/${avail[0].sequences.sequence}/${
-              avail[0].images[0].file
-            }`
-        )
-      ) {
-        return res
-          .status(500)
-          .json({ success: false, error: "image file does not exist" });
-      }
+      let bucketParams = { Bucket: `ourlabels-${project_id}-${avail[0].sequences.sequence}` }
+      bucketParams.Key = avail[0].images[0].file
+      s3.getObject(bucketParams, (err, data) => {
+        if (err) return res.status(500).json({ success: false, error: "unable to find image" })
+        return res.status(200).json({
+          success: true,
+          image: "data:image/jpeg;base64," + data.Body.toString("base64"),
+          imageid: avail[0].images[0]._id.toString(),
+          sequence: avail[0].sequences.sequence,
+          index: idx,
+          count: avail[0].count
+        });
+      })
       // only one images subdocument should have been returned by slice
-      let imageBuffer = fs.readFileSync(
-        __dirname +
-          `/../../../uploads/${project_id}/${avail[0].sequences.sequence}/${
-            avail[0].images[0].file
-          }`
-      );
-      return res.status(200).json({
-        success: true,
-        imageid: avail[0].images[0]._id.toString(),
-        image: "data:image/jpeg;base64," + imageBuffer.toString("base64"),
-        sequence: avail[0].sequences.sequence,
-        index: idx,
-        count: avail[0].count
-      });
     }
   } catch (error) {
     winston.log("error", "oops error for userid:", req.user.id, error);

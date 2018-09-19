@@ -1,5 +1,17 @@
 const fs = require("fs");
 const spawnSync = require("child_process").spawnSync
+const readChunk = require("read-chunk")
+const fileType = require("file-type")
+const AWS = require('aws-sdk');
+AWS.config.update({
+  "accessKeyId": process.env.AWS_ACCESS_KEY_S3,
+  "secretAccessKey": process.env.AWS_SECRET_ACCESS_KEY_S3,
+})
+const s3 = new AWS.S3({
+  apiVersion: '2006-03-01', region: 'us-east-2'
+});
+const winston = require('winston');
+
 function checkName(filePath, isVideo) {
   const filePathSplit = filePath.split("/");
   const filename = filePathSplit[filePathSplit.length - 1];
@@ -59,6 +71,39 @@ function isImageFile(path) {
   let buffer = readChunk.sync(path, 0, 4100);
   let file_type = fileType(buffer)["ext"];
   return ["jpg", "png"].includes(file_type);
+}
+
+const deleteBucket = async (keys, projectId, seqId, path) => {
+  try {
+    let deleteKeys = []
+    for (let key of keys) {
+      deleteKeys.push({
+        Key: key
+      })
+    }
+    console.log(deleteKeys)
+    if (deleteKeys.length > 0) {
+      let objectData = await s3.deleteObjects({ Bucket: `ourlabels-${projectId}-${seqId}`, Delete: { Objects: deleteKeys } }).promise()
+      console.log("DELETE OBJECTS:", objectData)
+    }
+    let data = await s3.deleteBucket({ Bucket: `ourlabels-${projectId}-${seqId}` }).promise()
+    console.log("DELETE:", data)
+  } catch (err) {
+    console.log("ERR4: ", err)
+  }
+}
+
+const listAllKeys = (token, projectId, seqId, path, accumulator, cb) => {
+  var opts = { Bucket: `ourlabels-${projectId}-${seqId}` };
+  if (token) opts.ContinuationToken = token;
+  s3.listObjectsV2(opts, function (err, data) {
+    let acc = accumulator.slice()
+    acc = acc.concat(data.Contents.map((datum) => { return (datum.Key) }));
+    if (data.IsTruncated)
+      listAllKeys(data.NextContinuationToken, projectId, seqId, path, acc, cb);
+    else
+      cb(acc, projectId, seqId, path)
+  });
 }
 
 function decompressContent(filePath, newDirectory, isVideo) {
@@ -188,36 +233,62 @@ function processVideo(newDirectory, filename, seqname) {
   }
 }
 
-function processSeqImages(files, seq, newDirectory, userid) {
+const processSeqImages = async (files, seq, newDirectory, userid, projectId) => {
   let images = [];
   for (let i = seq.begin; i <= seq.end; i += 1) {
     let processedImages = [];
     const file = files[i];
+    console.log("FILE:", file)
     const filename = file.filename;
     const newPath = `${newDirectory}/${filename}`;
     fs.renameSync(file.path, newPath);
-    if (seq.video && checkName(newPath, seq.video)) {
+    if (seq.newVideo && checkName(newPath, seq.newVideo)) {
       // process video also handles tar gz/bz2 files
-      processedImages = processVideo(newDirectory, filename, seq.name);
-    } else if (!seq.video && checkName(newPath, seq.video)) {
+      processedImages = processVideo(newDirectory, filename, seq.newName);
+    } else if (!seq.newVideo && checkName(newPath, seq.newVideo)) {
       // process images, also handles tar gz/bz2 files
-      processedImages = processImage(newDirectory, filename, seq.name);
+      processedImages = processImage(newDirectory, filename, seq.newName);
     }
-    for (let image of processedImages) {
-      images.push({
-        userid: userid,
-        file: image.filename,
-        date: new Date(),
-        size: image.size,
-        classifications: []
-      });
+    const bucketParams = {
+      Bucket: `ourlabels-${projectId}-${seq.newName}`
+    }
+    try {
+      console.log("BUCKET:", bucketParams)
+      try {
+        await s3.createBucket(bucketParams).promise()
+      } catch (err) {
+        console.log("Already created")
+      }
+      for (const image of processedImages) {
+        try {
+          let imageFile = fs.readFileSync(`${newDirectory}/${image.filename}`)
+          const fileParams = {
+            Key: `${image.filename}`,
+            Body: imageFile,
+            Bucket: `ourlabels-${projectId}-${seq.newName}`
+          }
+          let data = await s3.upload(fileParams).promise()
+          console.log("DATA:", data)
+          images.push({
+            userid: userid,
+            file: image.filename,
+            date: new Date(),
+            size: image.size,
+            classifications: []
+          })
+          fs.unlinkSync(`${newDirectory}/${image.filename}`)
+          console.log("IMAGES:", images)
+          // daily we will check if files still exist to upload
+          // only delete the file if it's actually been uploaded
+        } catch (err) {
+          console.log("ERR2:", err)
+        }
+      }
+    } catch (err) {
+      console.log("ERR3:", err)
     }
   }
   return images;
-}
-
-function emailMeetsCriteria(email) {
-  return email.match(regexpEmail);
 }
 
 function passwordMeetsCriteria(password) {
@@ -249,7 +320,7 @@ function organizeClassifications(boxes, divX = 2, divY = 2) {
   }
   return continuous;
 }
-const generateBoxesFromBoxes = function(boxes) {
+const generateBoxesFromBoxes = function (boxes) {
   let newBoxes = [];
   for (let box of boxes) {
     newBoxes.push({
@@ -275,7 +346,7 @@ function userContent(user) {
       id: user.id,
       score: user.score,
       email: user.email,
-      current_project: user.current_project,
+      currentProject: user.current_project,
       role: user.role
     };
   }
@@ -286,7 +357,6 @@ module.exports = {
   checkName,
   checkCompressedFiles,
   decompressContent,
-  emailMeetsCriteria,
   generateBoxesFromBoxes,
   isImageFile,
   isVideoFile,
@@ -295,5 +365,7 @@ module.exports = {
   processImage,
   processVideo,
   processSeqImages,
-  userContent
+  userContent,
+  listAllKeys,
+  deleteBucket
 };

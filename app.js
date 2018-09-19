@@ -39,25 +39,25 @@ app.use(morgan(loggerFormat, {
   stream: process.stdout
 }));
 var whitelist = [
-  "http://localhost:8080",
-  "http://localhost:3000",
-  "http://localhost:59003",
-  "*"
+  new RegExp("(http://)?localhost:?(8080)?"),
+  new RegExp("127[.]0[.]0[.]1:8080"),
+  new RegExp("(https?://)?ourlabels.org")
 ];
-var corsOptions = {
-  origin: function(origin, callback) {
-    winston.log("info", "origin: ", origin);
-    if (whitelist.indexOf("*") !== -1 || whitelist.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true
-};
 
-app.options("*", cors(corsOptions)); // include before other routes
-app.use(cors(corsOptions));
+var corsOptionsDelegate = function (req, callback) {
+  let i = 0;
+  for (; i< whitelist.length; i++) {
+    if (req.header('Origin').match(whitelist[i])){
+      break;
+    }
+  }
+  if (i < whitelist.length)
+    callback(null, {origin: true, credentials: true})
+  else
+    callback(null, {origin: false, credentials: true})
+}
+app.options('*', cors(corsOptionsDelegate))
+app.use(cors(corsOptionsDelegate));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
   require("express-session")({
@@ -69,7 +69,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(
-  new Strategy(function(username, password, cb) {
+  new Strategy(function (username, password, cb) {
     db.ourlabelusers
       .findOne({ where: { username: { [Op.eq]: username } } })
       .then(user => {
@@ -109,12 +109,12 @@ passport.use(
   })
 );
 
-passport.serializeUser(function(user, cb) {
+passport.serializeUser(function (user, cb) {
   var sessionUser = { id: user.id, username: user.username, email: user.email };
   cb(null, sessionUser);
 });
 
-passport.deserializeUser(function(sessionUser, cb) {
+passport.deserializeUser(function (sessionUser, cb) {
   db.ourlabelusers
     .findOne({ where: { id: { [Op.eq]: sessionUser.id } } })
     .then(user => {
@@ -130,14 +130,14 @@ passport.deserializeUser(function(sessionUser, cb) {
 app.use("/", index);
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   const err = new Error("Not Found");
   err.status = 404;
   next(err);
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};

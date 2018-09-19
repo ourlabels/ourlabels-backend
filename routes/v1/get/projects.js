@@ -2,8 +2,16 @@ const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
 const db = require("../../../models");
+const winston = require("winston")
 const mongoose = require("../../../model/mongooseModels");
 const Op = db.Sequelize.Op;
+const getSize = (images) => {
+  let size = 0
+  for (let image of images) {
+    size += image.size
+  }
+  return size;
+}
 
 router.get("/guest", async (req, res) => {
   try {
@@ -17,9 +25,9 @@ router.get("/guest", async (req, res) => {
         id: project.id,
         title: project.title,
         description: project.description,
-        full_description: project.full_description,
-        type: project.type,
-        public: project.public,
+        fullDescription: project.full_description,
+        projectType: project.type,
+        publicType: project.public,
         featured: project.featured
       };
       accumulator.push(project_obj);
@@ -52,16 +60,16 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
           id: project.id,
           title: project.title,
           description: project.description,
-          full_description: project.full_description,
-          type: project.type,
-          public: project.public,
+          fullDescription: project.full_description,
+          projectType: project.type,
+          publicType: project.public,
           featured: project.featured,
           owner: project.owner === req.user.id,
           allowed: project.allowed.includes(req.user.id),
           requested: project.requested.includes(req.user.id),
           refused: project.refused.includes(req.user.id),
           joined: req.user.joined.includes(project.id),
-          current_project: req.user.current_project === project.id
+          currentProject: req.user.current_project === project.id
         };
         accumulator.push(project_obj);
       });
@@ -73,13 +81,10 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
 });
 router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
   try {
-    if (req.query.project_id == null || req.query.project_id === "") {
-      throw "Project not specified";
-    }
     let project = await db.projects.findOne({
       where: {
         [Op.and]: [
-          { id: { [Op.eq]: req.query.project_id } },
+          { id: { [Op.eq]: req.user.current_project } },
           { owner: { [Op.eq]: req.user.id } }
         ]
       }
@@ -95,7 +100,10 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
         $project: {
           "sequences.sequence": 1,
           "sequences.video": 1,
-          "sequences.images.file": 1
+          "sequences.images.file": 1,
+          "sequences.images.size": 1,
+          "sequences.segmentsX": 1,
+          "sequences.segmentsY": 1
         }
       }
     ]);
@@ -105,7 +113,10 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
         return {
           name: sequence.sequence,
           video: sequence.video,
-          files: sequence.images.length
+          files: sequence.images.length,
+          size: getSize(sequence.images), // in bytes
+          vSplit: sequence.segmentsY,
+          hSplit: sequence.segmentsX
         };
       });
     }
@@ -120,27 +131,23 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
     let refused = [];
     for (let user of users) {
       if (project.refused.includes(user.id)) {
-        refused.push({
-          username: user.username
-        });
+        refused.push(user.username);
       } else if (project.requested.includes(user.id)) {
-        requested.push({
-          username: user.username
-        });
+        requested.push(user.username);
       } else {
-        allowed.push({
-          username: user.username,
-          joined: user.joined.includes(project.id)
-        });
+        allowed.push(user.username);
       }
     }
     return res.status(200).json({
       success: true,
+      description: project.description,
+      fullDescription: project.full_description,
       allowed,
       refused,
       requested,
-      public: project.public,
+      publicType: project.public,
       type: project.type,
+      maxSize: req.user.role === "ROLE_ADMIN" ? 25.0 : req.user.role === "ROLE_MANAGER" ? 45.0 : 100.0,
       sequencenames
     });
   } catch (err) {

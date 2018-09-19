@@ -9,6 +9,7 @@
     "node": ">=7.8.0"
   },
   "dependencies": {
+    "aws-sdk": "^2.311.0",
     "bcrypt": "^2.0.1",
     "bluebird": "^3.5.1",
     "body-parser": "~1.18.3",

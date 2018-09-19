@@ -13,6 +13,9 @@ router.post(
   checkSchema(projectSchema),
   async (req, res) => {
     try {
+      if (req.user.role === "ROLE_USER" || req.user.role === "ROLE_BARRED") {
+        return;
+      }
       let project = await db.projects.findOne({
         where: { title: { [Op.eq]: req.body.title } }
       });
@@ -22,6 +25,7 @@ router.post(
           .status(200)
           .json({ success: false, error: "Project name is already taken" });
       } else {
+        // no project
         let errors = validationResult(req).array();
         if (errors.length > 0) {
           throw "400";

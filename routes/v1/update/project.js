@@ -9,13 +9,21 @@ const db = require("../../../models");
 const Op = db.Sequelize.Op;
 const router = express.Router();
 const { MAX_SIZE } = require("../../constants");
-const { processSeqImages } = require("../../utils");
+const { processSeqImages, listAllKeys, deleteBucket } = require("../../utils");
+const AWS = require('aws-sdk');
+AWS.config.update({
+  "accessKeyId": process.env.AWS_ACCESS_KEY_S3,
+  "secretAccessKey": process.env.AWS_SECRET_ACCESS_KEY_S3,
+})
+const s3 = new AWS.S3({
+  apiVersion: '2006-03-01', region: 'us-east-2'
+});
 
 var storage = multer.diskStorage({
-  destination: function(req, file, cb) {
+  destination: function (req, file, cb) {
     cb(null, "uploads/");
   },
-  filename: function(req, file, cb) {
+  filename: function (req, file, cb) {
     if (/.png|.jpg|.jpeg/.test(file.originalname.toLowerCase())) {
       cb(null, `${req.user.id}-${Date.now()}.jpg`.toLowerCase());
     } else if (/.mp4|.mpeg|.mpg|.ts/.test(file.originalname.toLowerCase())) {
@@ -43,19 +51,19 @@ router.post(
   upload.array("files"),
   async (req, res) => {
     try {
-      let project_id = req.body.project_id;
-      let isPublic = req.body.public;
-      let project_owner = req.body.owner;
+      let projectId = req.user.current_project;
+      let publicType = req.body.publicType;
+      let owner = req.body.owner;
       let description = req.body.description;
-      let full_description = req.body.full_description;
-      let project_type = req.body.type;
+      let fullDescription = req.body.fullDescription;
+      let type = req.body.type;
       let testarray = [
-        project_id,
-        isPublic,
-        project_owner,
+        projectId,
+        publicType,
+        owner,
         description,
-        full_description,
-        project_type
+        fullDescription,
+        type
       ];
       if (testarray.includes(null) || testarray.includes("")) {
         throw "400";
@@ -63,7 +71,7 @@ router.post(
       let project = await db.projects.findOne({
         where: {
           [Op.and]: [
-            { id: { [Op.eq]: parseInt(project_id) } },
+            { id: { [Op.eq]: parseInt(projectId) } },
             { owner: { [Op.eq]: req.user.id } }
           ]
         }
@@ -117,21 +125,21 @@ router.post(
       let requested = requestedUsers.map(user => {
         return user.id;
       });
-      let owner = project.owner;
-      let new_owner = await db.ourlabelusers.findOne({
-        where: { username: { [Op.eq]: project_owner } }
+      let projectOwner = project.owner;
+      let newOwner = await db.ourlabelusers.findOne({
+        where: { username: { [Op.eq]: owner } }
       });
 
-      if (new_owner) {
-        owner = new_owner.id;
+      if (newOwner) {
+        projectOwner = newOwner.id;
       }
 
-      let new_type = await db.project_types.findOne({
-        where: { id: { [Op.eq]: parseInt(project_type) } }
+      let newType = await db.project_types.findOne({
+        where: { id: { [Op.eq]: parseInt(type) } }
       });
-      let type = project.type;
-      if (new_type) {
-        type = new_type.id;
+      let projectType = project.type;
+      if (newType) {
+        projectType = newType.id;
       }
       let mongoProject = await mongoose.Projects.findOne({
         project_id: project.id
@@ -142,6 +150,7 @@ router.post(
           sequences: []
         });
       }
+      // arrays of objects
       let newSeqs = JSON.parse(req.body.new);
       let updateSeqs = JSON.parse(req.body.update);
       let deleteSeqs = JSON.parse(req.body.delete);
@@ -157,66 +166,70 @@ router.post(
       sequences = toSave;
       for (let seqToDelete of toDelete) {
         rimraf.sync(`uploads/${project.id}/${seqToDelete.sequence}/`);
+        listAllKeys(null, project.id, seqToDelete.sequence, "", [], deleteBucket)
       }
-      for (let updSeq of Object.keys(updateSeqs)) {
-        let seq = updateSeqs[updSeq];
-        const newDirectory = `uploads/${project.id}/${seq.name}`;
-        if (fs.existsSync(`uploads/${project.id}/${updSeq}`)) {
-          if (updSeq !== seq.name) {
-            fs.renameSync(`uploads/${project.id}/${updSeq}`, newDirectory);
-          }
+      for (const updSeq of updateSeqs) {
+        const newDirectory = `uploads/${project.id}/${updSeq.newName}`;
+        if (fs.existsSync(`uploads/${project.id}/${updSeq.originalname}`)) {
+          fs.renameSync(`uploads/${project.id}/${updSeq.originalname}`, newDirectory);
         } else {
           fs.mkdirSync(newDirectory);
         }
-        let images = processSeqImages(
+        let images = await processSeqImages(
           req.files,
-          seq,
+          updSeq,
           newDirectory,
-          req.user.id
+          req.user.id,
+          projectId
         );
+        winston.log('error', 'update:', images)
         let i = 0;
         for (; i < sequences.length; i += 1) {
-          if (sequences[i].sequence === updSeq) {
+          if (sequences[i].sequence === updSeq.originalname) {
             break;
           }
         }
         if (i < sequences.length) {
           let sequence = sequences[i];
           sequences.splice(i, 1);
-          sequence.sequence = seq.name;
+          sequence.sequence = updSeq.newName;
           sequence.images = sequence.images.concat(images);
-          sequences.push(sequence);
+          sequences.splice(i, 0, sequence)
         }
       }
-      for (let newSeq of Object.keys(newSeqs)) {
-        let seq = newSeqs[newSeq];
-        const newDirectory = `uploads/${project.id}/${seq.name}`;
+      for (const newSeq of newSeqs) {
+        winston.log('error', "newSeq:", newSeq)
+        const newDirectory = `uploads/${project.id}/${newSeq.newName}`;
         if (fs.existsSync(newDirectory)) {
+          // maybe there was an old sequence with the same name that somehow didn't get deleted
+          // in the delete process
           rimraf.sync(newDirectory);
         }
         fs.mkdirSync(newDirectory);
-        const images = processSeqImages(
+        winston.log("error", "made directory:", newDirectory)
+        const images = await processSeqImages(
           req.files,
-          seq,
+          newSeq,
           newDirectory,
-          req.user.id
+          req.user.id,
+          projectId
         );
         sequences.push({
-          sequence: seq.name,
-          video: seq.video,
+          sequence: newSeq.newName,
+          video: newSeq.newVideo,
           images,
-          segmentsX: seq.segmentsX,
-          segmentsY: seq.segmentsY
+          segmentsX: newSeq.newHSplit,
+          segmentsY: newSeq.newVSplit
         });
       }
       mongoProject.sequences = sequences;
       await mongoProject.save();
       await project.update({
-        public: isPublic,
-        type,
+        publicType,
+        projectType,
         description,
-        full_description,
-        owner,
+        fullDescription,
+        projectOwner,
         allowed,
         requested,
         refused

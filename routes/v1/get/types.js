@@ -14,7 +14,8 @@ router.get("/", async (req, res) => {
       };
       accumulator.push(type_obj);
     }
-    return res.status(200).json({ success: true, types: accumulator });
+    
+    return res.status(200).json({ success: true, projectTypes: accumulator });
   } catch (err) {
     return res
       .status(500)
