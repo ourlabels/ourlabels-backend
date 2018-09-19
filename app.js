@@ -44,7 +44,7 @@ var whitelist = [
   new RegExp("(https?://)?ourlabels.org")
 ];
 
-var corsOptionsDelegate = function (req, callback) {
+var corsDelegate = function (req, callback) {
   let i = 0;
   for (; i< whitelist.length; i++) {
     winston.log('error', `ORIGIN: ${req.header('Origin')}`)
@@ -57,8 +57,11 @@ var corsOptionsDelegate = function (req, callback) {
   else
     callback(null, {origin: false, credentials: true})
 }
-app.options('*', cors())
-app.use(cors(corsOptionsDelegate));
+var corsOptionsDelegate = (req, callback) => {
+  callback(null, {origin: true})
+}
+app.options('*', cors(corsOptionsDelegate))
+app.use(cors(corsDelegate));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
   require("express-session")({
