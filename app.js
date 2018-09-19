@@ -57,7 +57,7 @@ var corsOptionsDelegate = function (req, callback) {
   else
     callback(null, {origin: false, credentials: true})
 }
-app.options('*', cors(corsOptionsDelegate))
+app.options('*', cors())
 app.use(cors(corsOptionsDelegate));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
