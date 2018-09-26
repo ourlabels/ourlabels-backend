@@ -39,7 +39,9 @@ const ImageSchema = new mongoose.Schema(
     file: String, // not the full path, but the file name
     date: Date,
     size: Number,
-    classifications: [ClassificationSchema]
+    classifications: [ClassificationSchema],
+    pixelWidth: Number,
+    pixelHeight: Number
   },
   { collection: "Images" }
 );

@@ -41,7 +41,8 @@ app.use(morgan(loggerFormat, {
 var whitelist = [
   new RegExp("(http://)?localhost:?(8080)?"),
   new RegExp("127[.]0[.]0[.]1:8080"),
-  new RegExp("(https?://)?ourlabels.org")
+  new RegExp("(https?://)?ourlabels.org"),
+  /localhost:8080/
 ];
 
 var corsDelegate = function (req, callback) {
@@ -61,7 +62,7 @@ var corsDelegate = function (req, callback) {
   else
     callback(null, {origin: false, credentials: true})
 }
-app.options('*', cors())
+app.options('*', cors(corsDelegate))
 app.use(cors(corsDelegate));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(

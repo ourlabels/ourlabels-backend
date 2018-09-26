@@ -300,9 +300,11 @@ function organizeClassifications(boxes, divX = 2, divY = 2) {
     boxesOrganized.push([]);
   }
   for (let box of boxes) {
-    let rectX = Math.floor(box.x * divX);
-    let rectY = Math.floor(box.y * divY); // both are 0 based so no -1
+    console.log(box)
+    let rectX = Math.floor(Math.round(((box.x + box.width)/2) * divX));
+    let rectY = Math.floor(Math.round(((box.y + box.height)/2) * divY)); // both are 0 based so no -1
     let boxPos = rectY * divX + rectX;
+    console.log(boxPos)
     boxesOrganized[boxPos].push(box);
   }
   let continuous = [];

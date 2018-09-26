@@ -94,6 +94,9 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           "sequences.images.file": 1,
           "sequences.images.date": 1,
           "sequences.images.classifications": 1,
+          "sequences.images.size": 1,
+          "sequences.images.pixelWidth": 1,
+          "sequences.images.pixelHeight": 1,
           arrayIndex: 1
         }
       },
@@ -144,54 +147,47 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
     let indexes = [];
     let array_index_json = {};
     for (let imageWithClassification of mongoProject) {
-      // imageWithClassification.sequences.images.classifications.boxes is array of annotations
-      let fullFilePath = `${__dirname}/../../../uploads/${id}/${
-        imageWithClassification.sequences.sequence
-      }/${imageWithClassification.sequences.images.file}`;
-
-      if (fs.existsSync(fullFilePath)) {
-        // file exists, so use its content
-        let imageSize = sizeOf(fullFilePath);
-        if (!indexes.includes(imageWithClassification.arrayIndex)) {
-          indexes.push(imageWithClassification.arrayIndex);
-          let image = {
-            id: i,
-            width: imageSize.width,
-            height: imageSize.height,
-            file_name: imageWithClassification.sequences.images.file,
-            license: 1,
-            filckr_url: "",
-            coco_url: "",
-            date_captured: imageWithClassification.sequences.images.date
-          };
-          dataset_json["images"].push(image);
-          array_index_json[imageWithClassification.arrayIndex] = image;
-          i += 1;
-        }
-        for (let box of imageWithClassification.sequences.images.classifications
-          .boxes) {
-          // a box is an annotation
-          let width =
-            array_index_json[imageWithClassification.arrayIndex]["width"];
-          let height =
-            array_index_json[imageWithClassification.arrayIndex]["height"];
-          let x = box.x * width;
-          let y = box.y * height;
-          let w = box.width * width;
-          let h = box.height * height;
-          let annotation = {
-            id: j,
-            image_id:
-              array_index_json[imageWithClassification.arrayIndex]["id"],
-            bbox: [x, y, w, h],
-            area: w * h,
-            segmentation: [],
-            category_id: category_json[box.type_key],
-            iscrowd: 0
-          };
-          j += 1;
-          dataset_json["annotations"].push(annotation);
-        }
+      imageWithClassification.sequences.images.file
+      // file exists, so use its content
+      if (!indexes.includes(imageWithClassification.arrayIndex)) {
+        indexes.push(imageWithClassification.arrayIndex);
+        let image = {
+          id: i,
+          width: imageWithClassification.sequences.images.pixelWidth,
+          height: imageWithClassification.sequences.images.pixelHeight,
+          file_name: imageWithClassification.sequences.images.file,
+          license: 1,
+          filckr_url: "",
+          coco_url: "",
+          date_captured: imageWithClassification.sequences.images.date
+        };
+        dataset_json["images"].push(image);
+        array_index_json[imageWithClassification.arrayIndex] = image;
+        i += 1;
+      }
+      for (let box of imageWithClassification.sequences.images.classifications
+        .boxes) {
+        // a box is an annotation
+        let width =
+          array_index_json[imageWithClassification.arrayIndex]["width"];
+        let height =
+          array_index_json[imageWithClassification.arrayIndex]["height"];
+        let x = box.x * width;
+        let y = box.y * height;
+        let w = box.width * width;
+        let h = box.height * height;
+        let annotation = {
+          id: j,
+          image_id:
+            array_index_json[imageWithClassification.arrayIndex]["id"],
+          bbox: [x, y, w, h],
+          area: w * h,
+          segmentation: [],
+          category_id: category_json[box.type_key],
+          iscrowd: 0
+        };
+        j += 1;
+        dataset_json["annotations"].push(annotation);
       }
     }
     let tempPath = `${__dirname}/${req.user.id}`;
@@ -266,6 +262,9 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
         $project: {
           "sequences.sequence": 1,
           "sequences.images.file": 1,
+          "sequences.images.size": 1,
+          "sequences.images.pixelWidth": 1,
+          "sequences.images.pixelHeight": 1,
           "sequences.images.date": 1,
           "sequences.images.classifications": 1,
           arrayIndex: 1
@@ -298,17 +297,12 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
     for (let annotation of mongoProject) {
       let seq = annotation.sequences.sequence;
       let filename = annotation.sequences.images.file;
-      let fullFilePath = `${__dirname}/../../../uploads/${id}/${seq}/${filename}`;
-      if (!fs.existsSync(fullFilePath)) {
-        continue;
-      }
-      let img_size = sizeOf(fullFilePath);
       let xml = builder.create("annotation", {}, {}, { headless: true }); // root
       xml.ele("folder", {}, seq);
       xml.ele("filename", {}, filename);
       let xml_size = builder.create("size");
-      xml_size.ele("width", {}, img_size.width);
-      xml_size.ele("height", {}, img_size.height);
+      xml_size.ele("width", {}, annotation.sequences.images.pixelWidth);
+      xml_size.ele("height", {}, annotation.sequences.images.pixelHeight);
       xml_size.ele("depth", {}, 3);
       xml.importDocument(xml_size);
       xml.ele("segmented", {}, 0);
