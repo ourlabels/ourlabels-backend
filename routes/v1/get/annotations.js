@@ -199,7 +199,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           image_id:
             array_index_json[imageWithClassification.arrayIndex]["id"],
           bbox: [x, y, w, h],
-          segmentation: null,
+          segmentation: [[x,y,x,y+h,x+w,y+h,x+w,y]],
           area: Math.round(w * h*10000)/10000,
           category_id: category_json[box.type_key],
           iscrowd: 0
@@ -315,12 +315,14 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
     for (let annotation of mongoProject) {
       let seq = annotation.sequences.sequence;
       let filename = annotation.sequences.images.file;
+      const width = annotation.sequences.images.pixelWidth;
+      const height = annotation.sequences.images.pixelHeight;
       let xml = builder.create("annotation", {}, {}, { headless: true }); // root
       xml.ele("folder", {}, seq);
       xml.ele("filename", {}, filename);
       let xml_size = builder.create("size");
-      xml_size.ele("width", {}, annotation.sequences.images.pixelWidth);
-      xml_size.ele("height", {}, annotation.sequences.images.pixelHeight);
+      xml_size.ele("width", {}, width);
+      xml_size.ele("height", {}, height);
       xml_size.ele("depth", {}, 3);
       xml.importDocument(xml_size);
       xml.ele("segmented", {}, 0);
@@ -331,10 +333,29 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
         xml_object.ele("occluded", {}, box.occluded ? 1 : 0);
         xml_object.ele("difficult", {}, box.difficult ? 1 : 0);
         let bndbox = builder.create("bndbox");
-        let xmin = box.x * img_size.width;
-        let ymin = box.y * img_size.height;
-        let xmax = (box.x + box.width) * img_size.width;
-        let ymax = (box.y + box.height) * img_size.height;
+        let xmin = box.x * width;
+        let ymin = box.y * height;
+        let xmax = (box.x + box.width) * width;
+        let ymax = (box.y + box.height) * height;
+        if (xmin <= 0) {
+          xmin = 1
+        }
+        if (xmin >= width) {
+          xmin = width - 1
+        }
+        if (ymin <= 0) {
+          ymin = 1
+        }
+        if (ymin >= height) {
+          ymin = height - 1
+        }
+        if (xmax >= width) {
+          xmax = width
+        }
+        if (ymax >= height) {
+          ymax = height
+        }
+
         bndbox.ele("xmin", {}, xmin);
         bndbox.ele("ymin", {}, ymin);
         bndbox.ele("xmax", {}, xmax);
