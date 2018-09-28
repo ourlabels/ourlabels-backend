@@ -333,10 +333,10 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
         xml_object.ele("occluded", {}, box.occluded ? 1 : 0);
         xml_object.ele("difficult", {}, box.difficult ? 1 : 0);
         let bndbox = builder.create("bndbox");
-        let xmin = box.x * width;
-        let ymin = box.y * height;
-        let xmax = (box.x + box.width) * width;
-        let ymax = (box.y + box.height) * height;
+        let xmin = Math.round(box.x * width);
+        let ymin = Math.round(box.y * height);
+        let xmax = Math.round((box.x + box.width) * width);
+        let ymax = Math.round((box.y + box.height) * height);
         if (xmin <= 0) {
           xmin = 1
         }
