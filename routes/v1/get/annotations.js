@@ -2,7 +2,6 @@ const fs = require("fs");
 const rimraf = require("rimraf");
 const spawnSync = require("child_process").spawnSync;
 const express = require("express");
-var sizeOf = require("image-size");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
 const db = require("../../../models");
@@ -172,17 +171,36 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           array_index_json[imageWithClassification.arrayIndex]["width"];
         let height =
           array_index_json[imageWithClassification.arrayIndex]["height"];
-        let x = box.x * width;
-        let y = box.y * height;
-        let w = box.width * width;
-        let h = box.height * height;
+        let x = Math.round(box.x * width * 100) / 100;
+        let y = Math.round(box.y * height * 100) / 100;
+        let w = Math.round(box.width * width * 100) / 100;
+        let h = Math.round(box.height * height * 100) / 100;
+        if (x <= 0) {
+          x = 0.1
+        }
+        if (x >= width) {
+          x = width - 0.1
+        }
+        if (y <= 0) {
+          y = 0.1
+        }
+        if (y >= height) {
+          y = height - 0.1
+        }
+        if ((x + w) >= width) {
+          w = width - x - 0.1
+        }
+        if ((y+h) >= height) {
+          h = height - y - 0.1
+        }
+
         let annotation = {
           id: j,
           image_id:
             array_index_json[imageWithClassification.arrayIndex]["id"],
           bbox: [x, y, w, h],
-          area: w * h,
-          segmentation: [],
+          segmentation: null,
+          area: Math.round(w * h*10000)/10000,
           category_id: category_json[box.type_key],
           iscrowd: 0
         };

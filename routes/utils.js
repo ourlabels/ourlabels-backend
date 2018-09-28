@@ -3,6 +3,7 @@ const spawnSync = require("child_process").spawnSync
 const readChunk = require("read-chunk")
 const fileType = require("file-type")
 const AWS = require('aws-sdk');
+var sizeOf = require("image-size");
 AWS.config.update({
   "accessKeyId": process.env.AWS_ACCESS_KEY_S3,
   "secretAccessKey": process.env.AWS_SECRET_ACCESS_KEY_S3,
@@ -238,7 +239,6 @@ const processSeqImages = async (files, seq, newDirectory, userid, projectId) => 
   for (let i = seq.begin; i <= seq.end; i += 1) {
     let processedImages = [];
     const file = files[i];
-    console.log("FILE:", file)
     const filename = file.filename;
     const newPath = `${newDirectory}/${filename}`;
     fs.renameSync(file.path, newPath);
@@ -262,6 +262,7 @@ const processSeqImages = async (files, seq, newDirectory, userid, projectId) => 
       for (const image of processedImages) {
         try {
           let imageFile = fs.readFileSync(`${newDirectory}/${image.filename}`)
+          let fileDims = sizeOf(`${newDirectory}/${image.filename}`)
           const fileParams = {
             Key: `${image.filename}`,
             Body: imageFile,
@@ -274,6 +275,8 @@ const processSeqImages = async (files, seq, newDirectory, userid, projectId) => 
             file: image.filename,
             date: new Date(),
             size: image.size,
+            pixelWidth: fileDims.width,
+            pixelHeight: fileDims.height,
             classifications: []
           })
           fs.unlinkSync(`${newDirectory}/${image.filename}`)
