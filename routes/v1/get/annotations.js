@@ -134,45 +134,40 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
     }
     let i = 1;
     let j = 1;
-    let array_index_json = {};
     for (let imageWithClassification of mongoProject) {
-        indexes.push(imageWithClassification.arrayIndex);
-        let image = {
-          id: i,
-          width: imageWithClassification.sequences.images.pixelWidth,
-          height: imageWithClassification.sequences.images.pixelHeight,
-          file_name: imageWithClassification.sequences.images.file,
-          license: 1,
-          filckr_url: "",
-          coco_url: "",
-          date_captured: imageWithClassification.sequences.images.date
+      let image = {
+        id: i,
+        width: imageWithClassification.sequences.images.pixelWidth,
+        height: imageWithClassification.sequences.images.pixelHeight,
+        file_name: imageWithClassification.sequences.images.file,
+        license: 1,
+        filckr_url: "",
+        coco_url: "",
+        date_captured: imageWithClassification.sequences.images.date
+      };
+      dataset_json["images"].push(image);
+      for (let box of imageWithClassification.sequences.images.classifications
+        .boxes) {
+        // a box is an annotation
+        let width = imageWithClassification.sequences.images.pixelWidth;
+        let height = imageWithClassification.sequences.images.pixelHeight;
+        let x = Math.floor(box.x * width * 100) / 100;
+        let y = Math.floor(box.y * height * 100) / 100;
+        let w = Math.floor(box.width * width * 100) / 100;
+        let h = Math.floor(box.height * height * 100) / 100;
+        let annotation = {
+          id: j,
+          image_id: i,
+          bbox: [x, y, w, h],
+          segmentation: [[y, x, y + h, x, y + h, x + w, y, x + w]],
+          area: Math.floor(w * h * 10000) / 10000,
+          category_id: category_json[box.type_key],
+          iscrowd: 0
         };
-        dataset_json["images"].push(image);
-        for (let box of imageWithClassification.sequences.images.classifications
-          .boxes) {
-          // a box is an annotation
-          let width = imageWithClassification.sequences.images.pixelWidth;
-          let height = imageWithClassification.sequences.images.pixelHeight;
-          let x = Math.floor(box.x * width * 100) / 100;
-          let y = Math.floor(box.y * height * 100) / 100;
-          let w = Math.floor(box.width * width * 100) / 100;
-          let h = Math.floor(box.height * height * 100) / 100;
-          let annotation = {
-            id: j,
-            image_id: i,
-            bbox: [x, y, w, h],
-            segmentation: [[y, x, y + h, x, y + h, x + w, y, x + w]],
-            area: Math.floor(w * h * 10000) / 10000,
-            category_id: category_json[box.type_key],
-            iscrowd: 0
-          };
-          j += 1;
-          dataset_json["annotations"].push(annotation);
-        }
-        i += 1;
+        j += 1;
+        dataset_json["annotations"].push(annotation);
       }
-      winston.log("error", "HELP XXX", imageWithClassification)
-      
+      i += 1;
     }
     let tempPath = `${__dirname}/${req.user.id}`;
     if (fs.existsSync(tempPath)) {
