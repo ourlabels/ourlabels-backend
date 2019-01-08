@@ -147,7 +147,7 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
       requested,
       publicType: project.public,
       type: project.type,
-      maxSize: req.user.role === "ROLE_ADMIN" ? 25.0 : req.user.role === "ROLE_MANAGER" ? 45.0 : 100.0,
+      maxSize: req.user.role === "ROLE_ADMIN" ? 25.0 : req.user.role === "ROLE_MANAGER" ? 100.0 : 200.0,
       sequencenames
     });
   } catch (err) {

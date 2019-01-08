@@ -171,10 +171,10 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           array_index_json[imageWithClassification.arrayIndex]["width"];
         let height =
           array_index_json[imageWithClassification.arrayIndex]["height"];
-        let x = Math.round(box.x * width * 100) / 100;
-        let y = Math.round(box.y * height * 100) / 100;
-        let w = Math.round(box.width * width * 100) / 100;
-        let h = Math.round(box.height * height * 100) / 100;
+        let x = Math.round(box.y * width * 100) / 100;
+        let y = Math.round(box.x * height * 100) / 100;
+        let w = Math.round(box.height * width * 100) / 100;
+        let h = Math.round(box.width * height * 100) / 100;
         if (x <= 0) {
           x = 0.1
         }
@@ -198,8 +198,8 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           id: j,
           image_id:
             array_index_json[imageWithClassification.arrayIndex]["id"],
-          bbox: [x, y, w, h],
-          segmentation: [[x,y,x,y+h,x+w,y+h,x+w,y]],
+          bbox: [y, x, h, w],
+          segmentation: [[y,x,y+h,x,y+h,x+w,y,x+w]],
           area: Math.round(w * h*10000)/10000,
           category_id: category_json[box.type_key],
           iscrowd: 0

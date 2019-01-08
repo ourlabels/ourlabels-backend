@@ -1,4 +1,4 @@
-const MAX_SIZE = 15 * Math.pow(2, 20); // 16 MB limit, but keep to 15 to be safe
+const MAX_SIZE = 200 * Math.pow(2, 20); // 150 MB limit, but keep to 15 to be safe
 const SALT_ROUNDS = 12;
 const REGEXP_CAPITAL = /[A-Z]+/;
 const REGEXP_LOWERCASE = /[a-z]+/;

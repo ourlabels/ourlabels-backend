@@ -40,7 +40,7 @@ app.use(morgan(loggerFormat, {
 }));
 var whitelist = [
   new RegExp("(http://)?localhost:?(8080)?"),
-  new RegExp("127[.]0[.]0[.]1:8080"),
+  new RegExp("(http://)?127.0.0.1:8080"),
   new RegExp("(https?://)?ourlabels.org"),
   /localhost:8080/
 ];
@@ -52,7 +52,6 @@ var corsDelegate = function (req, callback) {
     return;
   }
   for (; i< whitelist.length; i++) {
-    winston.log('error', `ORIGIN: ${req.header('Origin')}`)
     if (req.header('Origin').match(whitelist[i])){
       break;
     }

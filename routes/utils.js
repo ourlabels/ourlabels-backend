@@ -62,7 +62,7 @@ function checkCompressedFiles(filePath, regex) {
 function isVideoFile(path) {
   let buffer = readChunk.sync(path, 0, 4100);
   let file_type = fileType(buffer)["ext"];
-  const ext_exists = ["mpg", "mp4", "m4v", "mp2", "avi", "mts"].includes(
+  const ext_exists = ["mpg", "mp4", "m4v", "mp2", "avi", "mts", "m2v"].includes(
     file_type
   );
   return ext_exists;
@@ -239,6 +239,7 @@ const processSeqImages = async (files, seq, newDirectory, userid, projectId) => 
   for (let i = seq.begin; i <= seq.end; i += 1) {
     let processedImages = [];
     const file = files[i];
+    winston.log('error', file)
     const filename = file.filename;
     const newPath = `${newDirectory}/${filename}`;
     fs.renameSync(file.path, newPath);

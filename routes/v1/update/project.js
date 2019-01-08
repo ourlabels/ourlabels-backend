@@ -24,9 +24,10 @@ var storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
+    winston.log("error", file)
     if (/.png|.jpg|.jpeg/.test(file.originalname.toLowerCase())) {
       cb(null, `${req.user.id}-${Date.now()}.jpg`.toLowerCase());
-    } else if (/.mp4|.mpeg|.mpg|.ts/.test(file.originalname.toLowerCase())) {
+    } else if (/.mp4|.mpeg|.mpg|.ts|.m2v/.test(file.originalname.toLowerCase())) {
       cb(null, file.originalname.toLowerCase());
     } else if (
       /.tar.bz2|.tbz2|.tar.gz|.tgz/.test(file.originalname.toLocaleLowerCase())
