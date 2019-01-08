@@ -171,28 +171,10 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           array_index_json[imageWithClassification.arrayIndex]["width"];
         let height =
           array_index_json[imageWithClassification.arrayIndex]["height"];
-        let x = Math.round(box.y * width * 100) / 100;
-        let y = Math.round(box.x * height * 100) / 100;
-        let w = Math.round(box.height * width * 100) / 100;
-        let h = Math.round(box.width * height * 100) / 100;
-        if (x <= 0) {
-          x = 0.1
-        }
-        if (x >= width) {
-          x = width - 0.1
-        }
-        if (y <= 0) {
-          y = 0.1
-        }
-        if (y >= height) {
-          y = height - 0.1
-        }
-        if ((x + w) >= width) {
-          w = width - x - 0.1
-        }
-        if ((y+h) >= height) {
-          h = height - y - 0.1
-        }
+        let x = Math.round(box.x * width * 100) / 100;
+        let y = Math.round(box.y * height * 100) / 100;
+        let w = Math.round(box.width * width * 100) / 100;
+        let h = Math.round(box.height * height * 100) / 100;
 
         let annotation = {
           id: j,
