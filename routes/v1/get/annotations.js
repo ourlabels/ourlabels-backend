@@ -70,29 +70,19 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
     }
     let mongoProject = await mongoose.Projects.aggregate([
       { $match: { project_id: id } },
+      { $unwind: { path: "$sequences" } },
+      { $project: { "sequences.images": 1, "sequences.sequence": 1 } },
       {
-        $unwind: {
-          path: "$sequences"
-        }
-      },
-      {
-        $project: {
-          "sequences.images": 1,
-          "sequences.sequence": 1
-        }
-      },
-      {
-        $unwind: {
-          path: "$sequences.images",
-          includeArrayIndex: "arrayIndex"
-        }
+        $unwind: { path: "$sequences.images", includeArrayIndex: "arrayIndex" }
       },
       {
         $project: {
           "sequences.sequence": 1,
           "sequences.images.file": 1,
           "sequences.images.date": 1,
-          "sequences.images.classifications": {"$slice": ["$sequences.images.classifications", -1]},
+          "sequences.images.classifications": {
+            $slice: ["$sequences.images.classifications", -1]
+          },
           "sequences.images.size": 1,
           "sequences.images.pixelWidth": 1,
           "sequences.images.pixelHeight": 1,
@@ -101,7 +91,8 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
       },
       {
         $unwind: {
-          path: "$sequences.images.classifications"
+          path: "$sequences.images.classifications",
+          includeArrayIndex: "classificationIndex"
         }
       }
     ]);
@@ -270,7 +261,8 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
       },
       {
         $unwind: {
-          path: "$sequences.images.classifications"
+          path: "$sequences.images.classifications",
+          includeArrayIndex: "aIndex"
         }
       }
     ]);
