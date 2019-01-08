@@ -198,7 +198,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           id: j,
           image_id:
             array_index_json[imageWithClassification.arrayIndex]["id"],
-          bbox: [y, x, h, w],
+          bbox: [x, y, w, h],
           segmentation: [[y,x,y+h,x,y+h,x+w,y,x+w]],
           area: Math.round(w * h*10000)/10000,
           category_id: category_json[box.type_key],
