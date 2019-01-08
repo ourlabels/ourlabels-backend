@@ -92,7 +92,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           "sequences.sequence": 1,
           "sequences.images.file": 1,
           "sequences.images.date": 1,
-          "sequences.images.classifications": 1,
+          "sequences.images.classifications": {"$slice": ["$sequences.images.classifications", -1]},
           "sequences.images.size": 1,
           "sequences.images.pixelWidth": 1,
           "sequences.images.pixelHeight": 1,
@@ -146,7 +146,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
     let indexes = [];
     let array_index_json = {};
     for (let imageWithClassification of mongoProject) {
-      imageWithClassification.sequences.images.file
+      imageWithClassification.sequences.images.file;
       // file exists, so use its content
       if (!indexes.includes(imageWithClassification.arrayIndex)) {
         indexes.push(imageWithClassification.arrayIndex);
@@ -171,18 +171,16 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
           array_index_json[imageWithClassification.arrayIndex]["width"];
         let height =
           array_index_json[imageWithClassification.arrayIndex]["height"];
-        let x = Math.round(box.x * width * 100) / 100;
-        let y = Math.round(box.y * height * 100) / 100;
-        let w = Math.round(box.width * width * 100) / 100;
-        let h = Math.round(box.height * height * 100) / 100;
-
+        let x = Math.floor(box.x * width * 100) / 100;
+        let y = Math.floor(box.y * height * 100) / 100;
+        let w = Math.floor(box.width * width * 100) / 100;
+        let h = Math.floor(box.height * height * 100) / 100;
         let annotation = {
           id: j,
-          image_id:
-            array_index_json[imageWithClassification.arrayIndex]["id"],
+          image_id: array_index_json[imageWithClassification.arrayIndex]["id"],
           bbox: [x, y, w, h],
-          segmentation: [[y,x,y+h,x,y+h,x+w,y,x+w]],
-          area: Math.round(w * h*10000)/10000,
+          segmentation: [[y, x, y + h, x, y + h, x + w, y, x + w]],
+          area: Math.floor(w * h * 10000) / 10000,
           category_id: category_json[box.type_key],
           iscrowd: 0
         };
@@ -320,22 +318,22 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
         let xmax = Math.round((box.x + box.width) * width);
         let ymax = Math.round((box.y + box.height) * height);
         if (xmin <= 0) {
-          xmin = 1
+          xmin = 1;
         }
         if (xmin >= width) {
-          xmin = width - 1
+          xmin = width - 1;
         }
         if (ymin <= 0) {
-          ymin = 1
+          ymin = 1;
         }
         if (ymin >= height) {
-          ymin = height - 1
+          ymin = height - 1;
         }
         if (xmax >= width) {
-          xmax = width
+          xmax = width;
         }
         if (ymax >= height) {
-          ymax = height
+          ymax = height;
         }
 
         bndbox.ele("xmin", {}, xmin);
