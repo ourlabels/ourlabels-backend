@@ -158,7 +158,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
         let annotation = {
           id: j,
           image_id: i,
-          bbox: [x, y, w, h],
+          bbox: [y, x, w, h],
           segmentation: [[y, x, y + h, x, y + h, x + w, y, x + w]],
           area: Math.floor(w * h * 10000) / 10000,
           category_id: category_json[box.type_key],
