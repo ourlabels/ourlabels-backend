@@ -61,7 +61,7 @@ router.post(
           allowed: new_project.allowed,
           owner: new_project.owner
         };
-        fs.mkdirSync(`../../uploads/${new_project.id}`);
+        fs.mkdirSync(`../../uploads/${new_project.id}`, {recursive: true});
         res.status(200).json({ success: true, project: proj });
       }
     } catch (err) {

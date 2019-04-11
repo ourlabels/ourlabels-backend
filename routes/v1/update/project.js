@@ -10,24 +10,27 @@ const Op = db.Sequelize.Op;
 const router = express.Router();
 const { MAX_SIZE } = require("../../constants");
 const { processSeqImages, listAllKeys, deleteBucket } = require("../../utils");
-const AWS = require('aws-sdk');
+const AWS = require("aws-sdk");
 AWS.config.update({
-  "accessKeyId": process.env.AWS_ACCESS_KEY_S3,
-  "secretAccessKey": process.env.AWS_SECRET_ACCESS_KEY_S3,
-})
+  accessKeyId: process.env.AWS_ACCESS_KEY_S3,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_S3
+});
 const s3 = new AWS.S3({
-  apiVersion: '2006-03-01', region: 'us-east-2'
+  apiVersion: "2006-03-01",
+  region: "us-east-2"
 });
 
 var storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: function(req, file, cb) {
     cb(null, "uploads/");
   },
-  filename: function (req, file, cb) {
-    winston.log("error", file)
+  filename: function(req, file, cb) {
+    winston.log("error", file);
     if (/.png|.jpg|.jpeg/.test(file.originalname.toLowerCase())) {
       cb(null, `${req.user.id}-${Date.now()}.jpg`.toLowerCase());
-    } else if (/.mp4|.mpeg|.mpg|.ts|.m2v/.test(file.originalname.toLowerCase())) {
+    } else if (
+      /.mp4|.mpeg|.mpg|.ts|.m2v/.test(file.originalname.toLowerCase())
+    ) {
       cb(null, file.originalname.toLowerCase());
     } else if (
       /.tar.bz2|.tbz2|.tar.gz|.tgz/.test(file.originalname.toLocaleLowerCase())
@@ -45,7 +48,49 @@ const upload = multer({
   },
   storage: storage
 });
-
+const completeNewSeqs = async (
+  files,
+  newSeqs,
+  user,
+  projectId,
+  sequences,
+  mongoProject
+) => {
+  for (const newSeq of newSeqs) {
+    const newDirectory = `uploads/${projectId}/${newSeq.newName}`;
+    if (fs.existsSync(newDirectory)) {
+      // maybe there was an old sequence with the same name that somehow didn't get deleted
+      // in the delete process
+      rimraf.sync(newDirectory);
+    }
+    fs.mkdirSync(newDirectory, { recursive: true });
+    try {
+      const images = await processSeqImages(
+        files,
+        newSeq,
+        newDirectory,
+        user.id,
+        projectId
+      );
+      sequences.push({
+        sequence: newSeq.newName,
+        video: newSeq.newVideo,
+        images,
+        segmentsX: newSeq.newHSplit,
+        segmentsY: newSeq.newVSplit
+      });
+    } catch (error) {
+      winston.log(
+        "error",
+        `Could not complete completeNewSeqs because of error in processSeqImages for project:${projectId} from user:${
+          user.id
+        }. ${error}`
+      );
+    }
+  }
+  mongoProject.sequences = sequences;
+  await mongoProject.save();
+};
 router.post(
   "/",
   ensure.ensureLoggedIn(),
@@ -152,8 +197,9 @@ router.post(
         });
       }
       // arrays of objects
+      winston.log('error', `NEW: ${req.body.new}`)
+      winston.log('error', `DELETE: ${req.body.delete}`)
       let newSeqs = JSON.parse(req.body.new);
-      let updateSeqs = JSON.parse(req.body.update);
       let deleteSeqs = JSON.parse(req.body.delete);
       let sequences = mongoProject.sequences;
       const [toSave, toDelete] = sequences.reduce(
@@ -167,64 +213,24 @@ router.post(
       sequences = toSave;
       for (let seqToDelete of toDelete) {
         rimraf.sync(`uploads/${project.id}/${seqToDelete.sequence}/`);
-        listAllKeys(null, project.id, seqToDelete.sequence, "", [], deleteBucket)
-      }
-      for (const updSeq of updateSeqs) {
-        const newDirectory = `uploads/${project.id}/${updSeq.newName}`;
-        if (fs.existsSync(`uploads/${project.id}/${updSeq.originalname}`)) {
-          fs.renameSync(`uploads/${project.id}/${updSeq.originalname}`, newDirectory);
-        } else {
-          fs.mkdirSync(newDirectory);
-        }
-        let images = await processSeqImages(
-          req.files,
-          updSeq,
-          newDirectory,
-          req.user.id,
-          projectId
+        listAllKeys(
+          null,
+          project.id,
+          seqToDelete.sequence,
+          "",
+          [],
+          deleteBucket
         );
-        winston.log('error', 'update:', images)
-        let i = 0;
-        for (; i < sequences.length; i += 1) {
-          if (sequences[i].sequence === updSeq.originalname) {
-            break;
-          }
-        }
-        if (i < sequences.length) {
-          let sequence = sequences[i];
-          sequences.splice(i, 1);
-          sequence.sequence = updSeq.newName;
-          sequence.images = sequence.images.concat(images);
-          sequences.splice(i, 0, sequence)
-        }
       }
-      for (const newSeq of newSeqs) {
-        winston.log('error', "newSeq:", newSeq)
-        const newDirectory = `uploads/${project.id}/${newSeq.newName}`;
-        if (fs.existsSync(newDirectory)) {
-          // maybe there was an old sequence with the same name that somehow didn't get deleted
-          // in the delete process
-          rimraf.sync(newDirectory);
-        }
-        fs.mkdirSync(newDirectory);
-        winston.log("error", "made directory:", newDirectory)
-        const images = await processSeqImages(
-          req.files,
-          newSeq,
-          newDirectory,
-          req.user.id,
-          projectId
-        );
-        sequences.push({
-          sequence: newSeq.newName,
-          video: newSeq.newVideo,
-          images,
-          segmentsX: newSeq.newHSplit,
-          segmentsY: newSeq.newVSplit
-        });
-      }
-      mongoProject.sequences = sequences;
-      await mongoProject.save();
+      // Done asynchronously, takes too long to do synchronously
+      completeNewSeqs(
+        req.files,
+        newSeqs,
+        req.user,
+        parseInt(projectId),
+        sequences,
+        mongoProject
+      );
       await project.update({
         publicType,
         projectType,

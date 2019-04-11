@@ -1,6 +1,6 @@
 "use strict";
 const mongoose = require("mongoose");
-let uri = `mongodb://${process.env.MONGO_URI}`;
+let uri = process.env.MONGO_URI;
 mongoose.Promise = require("bluebird");
 
 const BoxSchema = new mongoose.Schema({
@@ -92,10 +92,7 @@ const LabelSets = mongoose.model("LabelSets", LabelSetsSchema);
 
 mongoose.connect(
   uri,
-  {
-    user: process.env.MONGO_USERNAME,
-    pass: process.env.MONGO_PASSWORD
-  }
+  { useNewUrlParser: true, useCreateIndex: true }
 );
 module.exports = {
   Projects: Projects,

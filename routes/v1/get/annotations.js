@@ -173,7 +173,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
     if (fs.existsSync(tempPath)) {
       rimraf.sync(tempPath);
     }
-    fs.mkdirSync(tempPath);
+    fs.mkdirSync(tempPath, {recursive: true});
     fs.writeFileSync(
       `${tempPath}/annotations.json`,
       JSON.stringify(dataset_json)
@@ -272,7 +272,7 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
     if (fs.existsSync(tempPath)) {
       rimraf.sync(tempPath);
     }
-    fs.mkdirSync(tempPath);
+    fs.mkdirSync(tempPath, {recursive: true});
     let i = 0;
     for (let annotation of mongoProject) {
       let seq = annotation.sequences.sequence;
