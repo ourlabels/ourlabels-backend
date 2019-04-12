@@ -5,6 +5,7 @@ const fileType = require("file-type");
 const moment = require("moment");
 const AWS = require("aws-sdk");
 var sizeOf = require("image-size");
+const rimraf = require("rimraf");
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_S3,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_S3
@@ -181,7 +182,11 @@ function decompressContent(filePath, newDirectory, isVideo, mimetype) {
       }
       return null;
     }
-  } else if (mimetype === "application/bzip2") {
+  } else if (
+    mimetype === "application/bzip2" ||
+    mimetype === "application/x-bzip" ||
+    mimetype === "application/x-bzip2"
+  ) {
     try {
       try {
         const taroutput = spawnSync(
@@ -345,7 +350,7 @@ function processVideo(
         "vfr",
         newPrefix + "-%06d.jpg"
       ];
-      const ffmpeg = spawnSync("ffmpeg", processOptions, {shell:true});
+      const ffmpeg = spawnSync("ffmpeg", processOptions, { shell: true });
       console.log(ffmpeg.status);
       console.log(ffmpeg.output.toString("utf8"));
       const ls = spawnSync("ls", ["-1", newDirectory]);
@@ -353,7 +358,7 @@ function processVideo(
       const images = lsString
         .split("\n")
         .filter(file => {
-          return file != "" && file.endsWith("jpg")
+          return file != "" && file.endsWith("jpg");
         })
         .map(file => {
           let filename = file.trim();
@@ -428,7 +433,6 @@ const processSeqImages = async (
       }
       for (const image of processedImages) {
         try {
-          winston.log("error", "IMAGE" + JSON.stringify(image));
           let imageFile = fs.readFileSync(`${newDirectory}/${image.filename}`);
           let fileDims = sizeOf(`${newDirectory}/${image.filename}`);
           const fileParams = {
@@ -437,7 +441,6 @@ const processSeqImages = async (
             Bucket: `ourlabels-${projectId}-${seq.newName}`
           };
           let data = await s3.upload(fileParams).promise();
-          winston.log("error", "DATA:" + JSON.stringify(data));
           images.push({
             userid: userid,
             file: image.filename,
@@ -449,6 +452,9 @@ const processSeqImages = async (
           });
           // daily we will check if files still exist to upload
           // only delete the file if it's actually been uploaded
+          if (fs.existsSync(imageFile)) {
+            fs.unlinkSync(imageFile);
+          }
         } catch (err) {
           winston.log("error", `Error2: ${err}`);
         }
@@ -456,6 +462,9 @@ const processSeqImages = async (
     } catch (err) {
       winston.log("error", `Error3: ${err}`);
     }
+  }
+  if (fs.existsSync(newDirectory)) {
+    rimraf.sync(newDirectory);
   }
   return images;
 };
