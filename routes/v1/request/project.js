@@ -1,15 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const db = require("../../../models");
-const Op = db.Sequelize.Op;
+const {Projects} = require("../../../models/sequelize")
+const Op = require("sequelize").Op;
 
 router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
   try {
     if (req.body.project_name == null || req.body.project_name === "") {
       throw "400";
     }
-    let project = await db.projects.findOne({
+    let project = await Projects.findOne({
       where: { title: { [Op.eq]: req.body.project_name } }
     });
     if (!project) {

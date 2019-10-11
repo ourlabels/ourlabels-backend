@@ -3,8 +3,8 @@ const uuidv1 = require("uuid/v1");
 const express = require("express");
 const router = express.Router();
 const winston = require("winston");
-const db = require("../../../models");
-const Op = db.Sequelize.Op;
+const {Users} = require("../../../models/sequelize");
+const Op = require("sequelize").Op;
 const { SALT_ROUNDS } = require("../../constants");
 const { userContent } = require("../../utils");
 const { validationResult, checkSchema } = require("express-validator/check");
@@ -14,7 +14,7 @@ router.post("/", checkSchema(signupSchema), async function(req, res) {
   if (validationResult(req).array().length === 0) {
     let user = null;
     try {
-      user = await db.ourlabelusers.findOne({
+      user = await Users.findOne({
         where: {
           username: req.body.username
         }
@@ -22,7 +22,7 @@ router.post("/", checkSchema(signupSchema), async function(req, res) {
       if (user != null) {
         throw "usernameexists";
       }
-      user = await db.ourlabelusers.findOne({
+      user = await Users.findOne({
         where: {
           email: {
             [Op.eq]: req.body.email
@@ -32,7 +32,7 @@ router.post("/", checkSchema(signupSchema), async function(req, res) {
       if (user !== null) {
         throw "emailexists";
       }
-      const newUser = db.ourlabelusers.build({
+      const newUser = Users.build({
         username: req.body.username,
         password: bcrypt.hashSync(req.body.password, SALT_ROUNDS),
         email: req.body.email,

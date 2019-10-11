@@ -1,0 +1,35 @@
+version: "3"
+
+services:
+  postgres:
+    hostname: postgres
+    image: postgres:11-alpine
+    env_file: 
+      - ../config/ourlabels-dev.env
+    ports: 
+      - "5432:5432"
+  mongo:
+    hostname: mongo
+    image: mongo:4
+    restart: always
+    env_file: 
+      - ../config/ourlabels-dev.env
+    ports:
+      - "27017:27017"
+  backend:
+    build: .
+    image: ourlabels/ourlabels-backend
+    hostname: backend
+    depends_on:
+      - "postgres"
+      - "mongo"
+    env_file: 
+      - ../config/ourlabels-dev.env
+    volumes: 
+      - .:/ourlabels-backend
+    command: ['sh','/ourlabels-backend/scripts/rundev.sh']
+    ports:
+      - "59003:59003"
+    links:
+      - "postgres"
+      - "mongo"

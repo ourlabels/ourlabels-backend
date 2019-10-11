@@ -1,30 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const db = require("../../../models");
-const Op = db.Sequelize.Op;
+const { Users } = require("../../../models/sequelize");
+const Op = require("sequelize").Op;
 
 router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
-  if (
-    req.body.username == null ||
-    req.body.username === "" ||
-    req.body.role_to_change_to == null ||
-    req.body.role_to_change_to === "" ||
-    !["ROLE_ADMIN", "ROLE_MANAGER", "ROLE_OWNER"].includes(req.user.role)
-  ) {
-    return res.status(400).json({
-      success: false,
-      error: "Incorrect attributes or role is not adequate"
-    });
-  }
   try {
+    const { username, role_to_change_to } = req.body;
+    if (
+      !username ||
+      !role_to_change_to ||
+      !["ROLE_ADMIN", "ROLE_MANAGER", "ROLE_OWNER"].includes(req.user.role)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Incorrect attributes or role is not adequate"
+      });
+    }
     let roles = ["ROLE_USER", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_OWNER"];
-    let user_to_change = db.ourlabelusers.findOne({
-      where: { username: { [Op.eq]: req.body.username } }
+    let user_to_change = Users.findOne({
+      where: { username: { [Op.eq]: username } }
     });
     if (
       roles.indexOf(user_to_change.role) >= roles.indexOf(req.user.role) ||
-      roles.indexOf(req.body.role_to_change_to) >= roles.indexOf(req.user.role)
+      roles.indexOf(role_to_change_to) >= roles.indexOf(req.user.role)
     ) {
       // can only make somebody one less than your role. Owner's can only make up to Managers
       // Managers's can only make up to Admins,
@@ -33,8 +32,7 @@ router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
     if (!user_to_change) {
       throw "404";
     }
-    let role = req.body.role_to_change_to;
-    await user_to_change.update({ role });
+    await user_to_change.update({ role: role_to_change_to });
     return res.status(200).json({ success: true });
   } catch (err) {
     if (err === "400") {
@@ -51,4 +49,4 @@ router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
   }
 });
 
-module.exports = router
+module.exports = router;

@@ -4,8 +4,8 @@ const spawnSync = require("child_process").spawnSync;
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const db = require("../../../models");
-const mongoose = require("../../../model/mongooseModels");
+const { Projects } = require("../../../models/sequelize");
+const mongoose = require("../../../models/mongoose");
 const { validationResult, checkSchema } = require("express-validator/check");
 const { getAnnotationsSchema } = require("../../constants");
 const builder = require("xmlbuilder");
@@ -64,7 +64,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
       throw "400";
     }
     const id = parseInt(req.query.projectId);
-    let postgresProject = await db.projects.findOne({ where: { id } });
+    let postgresProject = await Projects.findOne({ where: { id } });
     if (!postgresProject.public && postgresProject.owner !== req.user.id) {
       throw "401";
     }
@@ -173,7 +173,7 @@ router.get("/as/json", ensure.ensureLoggedIn(), async (req, res, next) => {
     if (fs.existsSync(tempPath)) {
       rimraf.sync(tempPath);
     }
-    fs.mkdirSync(tempPath, {recursive: true});
+    fs.mkdirSync(tempPath, { recursive: true });
     fs.writeFileSync(
       `${tempPath}/annotations.json`,
       JSON.stringify(dataset_json)
@@ -214,7 +214,7 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
       throw "400";
     }
     const id = parseInt(req.query.projectId);
-    let postgresProject = await db.projects.findOne({ where: { id } });
+    let postgresProject = await Projects.findOne({ where: { id } });
     if (!postgresProject.public && postgresProject.owner !== req.user.id) {
       throw "401";
     }
@@ -272,7 +272,7 @@ router.get("/as/xml", ensure.ensureLoggedIn(), async (req, res, next) => {
     if (fs.existsSync(tempPath)) {
       rimraf.sync(tempPath);
     }
-    fs.mkdirSync(tempPath, {recursive: true});
+    fs.mkdirSync(tempPath, { recursive: true });
     let i = 0;
     for (let annotation of mongoProject) {
       let seq = annotation.sequences.sequence;

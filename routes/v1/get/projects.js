@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const db = require("../../../models");
-const winston = require("winston")
-const mongoose = require("../../../model/mongooseModels");
-const Op = db.Sequelize.Op;
+const {Users, Projects} = require("../../../models/sequelize")
+const mongoose = require("../../../models/mongoose");
+const Op = require("sequelize").Op;
 const getSize = (images) => {
   let size = 0
   for (let image of images) {
@@ -17,7 +16,7 @@ router.get("/guest", async (req, res) => {
   try {
     let projects;
     let accumulator = [];
-    projects = await db.projects.findAll({
+    projects = await Projects.findAll({
       where: { public: true }
     });
     projects.forEach(project => {
@@ -43,7 +42,7 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
     let projects;
     let accumulator = [];
     if (req.user) {
-      projects = await db.projects.findAll({
+      projects = await Projects.findAll({
         where: {
           [Op.or]: [
             { public: true },
@@ -81,7 +80,7 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
 });
 router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
   try {
-    let project = await db.projects.findOne({
+    let project = await Projects.findOne({
       where: {
         [Op.and]: [
           { id: { [Op.eq]: req.user.current_project } },
@@ -123,7 +122,7 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
     let concatenated = project.requested
       .concat(project.refused)
       .concat(project.allowed);
-    let users = await db.ourlabelusers.findAll({
+    let users = await Users.findAll({
       where: { id: { [Op.any]: concatenated } }
     });
     let requested = [];

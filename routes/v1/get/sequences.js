@@ -1,7 +1,7 @@
 const express = require("express");
 const winston = require("winston");
 const ensure = require("connect-ensure-login");
-const mongoose = require("../../../model/mongooseModels");
+const mongoose = require("../../../models/mongoose");
 const router = express.Router();
 
 router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
@@ -28,4 +28,4 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
   }
 });
 
-module.exports = router
+module.exports = router;

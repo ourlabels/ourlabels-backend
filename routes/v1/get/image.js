@@ -3,7 +3,7 @@ const ensure = require("connect-ensure-login");
 const winston = require("winston");
 const express = require("express");
 const router = express.Router();
-const mongoose = require("../../../model/mongooseModels");
+const mongoose = require("../../../models/mongoose");
 const AWS = require('aws-sdk');
 AWS.config.update({
   "accessKeyId": process.env.AWS_ACCESS_KEY_S3,

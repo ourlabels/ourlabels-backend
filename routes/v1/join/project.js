@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../../../models");
-const mongoose = require("../../../model/mongooseModels");
+const { Projects } = require("../../../models/sequelize");
+const mongoose = require("../../../models/mongoose");
 const ensure = require("connect-ensure-login");
 const Sequelize = require("sequelize");
 const Op = Sequelize.Op;
@@ -11,7 +11,7 @@ router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
     if (req.body.project_id == null || req.body.project_id === "") {
       throw "400";
     }
-    let project = await db.projects.findOne({
+    let project = await Projects.findOne({
       where: { id: { [Op.eq]: req.body.project_id } }
     });
     if (!project) {
@@ -73,4 +73,4 @@ router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
   }
 });
 
-module.exports = router
+module.exports = router;

@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
 const { validationResult, checkSchema } = require("express-validator/check");
-const db = require("../../../models");
-const Op = db.Sequelize.Op;
+const { ProjectTypes } = require("../../../models/sequelize");
+const Op = require("sequelize").Op;
 const { typeSchema } = require("../../constants");
 
 router.post(
@@ -18,13 +18,13 @@ router.post(
       if (validationResult(req).array().length > 0) {
         throw "400";
       }
-      let type = db.project_types.findOne({
+      let type = ProjectTypes.findOne({
         where: { title: { [Op.eq]: req.body.title } }
       });
       if (type) {
         throw "300";
       }
-      let new_type = db.project_types.build({
+      let new_type = ProjectTypes.build({
         title: req.body.title,
         video: req.body.video
       });

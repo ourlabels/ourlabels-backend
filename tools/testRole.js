@@ -1,6 +1,6 @@
-const db = require("../models");
+const {Users} = require("../models/sequelize");
 const winston = require("winston")
-db.ourlabelusers.findAll({}).then(users => {
+Users.findAll({}).then(users => {
   for (let user of users) {
     winston.log("info", user.role, typeof user.role)
   }

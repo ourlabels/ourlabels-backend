@@ -1,6 +1,5 @@
-require("dotenv").config({ path: "../config/ourlabels.env" });
 const winston = require("winston")
-const mongoose = require("../model/mongooseModels.js");
+const mongoose = require("../models/mongoose");
 const fs = require("fs");
 const dir = "./uploads/11";
 let paths = [];

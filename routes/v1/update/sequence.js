@@ -2,7 +2,7 @@ const express = require("express");
 const winston = require("winston");
 const ensure = require("connect-ensure-login");
 const router = express.Router();
-const mongoose = require("../../../model/mongooseModels");
+const mongoose = require("../../../models/mongoose");
 
 router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
   try {

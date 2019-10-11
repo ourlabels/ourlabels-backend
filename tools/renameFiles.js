@@ -1,5 +1,5 @@
 require("dotenv").config({ path: "../../config/ourlabels.env" });
-const mongoose = require("../model/mongooseModels");
+const mongoose = require("../models/mongoose");
 const fs = require("fs");
 
 const modifyProject = async () => {

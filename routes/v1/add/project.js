@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const db = require("../../../models");
+const { Projects, ProjectTypes } = require("../../../models/sequelize");
 const fs = require("fs");
-const Op = db.Sequelize.Op;
+const Op = require("sequelize").Op;
 const { validationResult, checkSchema } = require("express-validator/check");
 const { projectSchema } = require("../../constants");
 
@@ -16,7 +16,7 @@ router.post(
       if (req.user.role === "ROLE_USER" || req.user.role === "ROLE_BARRED") {
         return;
       }
-      let project = await db.projects.findOne({
+      let project = await Projects.findOne({
         where: { title: { [Op.eq]: req.body.title } }
       });
       if (project) {
@@ -30,13 +30,13 @@ router.post(
         if (errors.length > 0) {
           throw "400";
         }
-        let type = await db.project_types.findOne({
+        let type = await ProjectTypes.findOne({
           where: { id: { [Op.eq]: req.body.type } }
         });
         if (!type) {
           throw "404";
         }
-        let new_project = await db.projects.build({
+        let new_project = await Projects.build({
           title: req.body.title,
           description: req.body.description,
           full_description: req.body.full_description,
@@ -61,7 +61,7 @@ router.post(
           allowed: new_project.allowed,
           owner: new_project.owner
         };
-        fs.mkdirSync(`../../uploads/${new_project.id}`, {recursive: true});
+        fs.mkdirSync(`../../uploads/${new_project.id}`, { recursive: true });
         res.status(200).json({ success: true, project: proj });
       }
     } catch (err) {

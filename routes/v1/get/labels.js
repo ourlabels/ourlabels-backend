@@ -1,8 +1,8 @@
 const ensure = require("connect-ensure-login");
 const express = require("express");
 const router = express.Router();
-const db = require("../../../models");
-const mongoose = require("../../../model/mongooseModels");
+const { Projects } = require("../../../models/sequelize");
+const mongoose = require("../../../models/mongoose");
 
 router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
   try {
@@ -11,7 +11,7 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
         .status(400)
         .json({ success: false, error: "No current project selected" });
     }
-    let project = db.projects.findOne({
+    let project = Projects.findOne({
       where: { id: req.user.current_project }
     });
     if (project == null) {

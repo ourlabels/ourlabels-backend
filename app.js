@@ -1,15 +1,12 @@
 const express = require("express");
 const path = require("path");
-// const favicon = require("serve-favicon");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
-require("dotenv").config({ path: "../config/ourlabels.env" });
 const passport = require("passport");
 const Strategy = require("passport-local").Strategy;
-const db = require("./models");
-const Sequelize = require("sequelize");
-const Op = Sequelize.Op;
+const { Users } = require("./models/sequelize");
+const Op = require("sequelize").Op;
 const bcrypt = require("bcrypt");
 const index = require("./routes/index");
 const winston = require("winston");
@@ -21,48 +18,48 @@ app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-morgan.token('id', function getId(req) {
-  return req.id
+morgan.token("id", function getId(req) {
+  return req.id;
 });
-const loggerFormat = ':id [:date[web]] ":method :url" :status :response-time ms';
-app.use(morgan(loggerFormat, {
-  skip: function (req, res) {
-    return res.statusCode < 400
-  },
-  stream: process.stderr
-}));
+const loggerFormat =
+  ':id [:date[web]] ":method :url" :status :response-time ms';
+app.use(
+  morgan(loggerFormat, {
+    skip: function(req, res) {
+      return res.statusCode < 400;
+    },
+    stream: process.stderr
+  })
+);
 
-app.use(morgan(loggerFormat, {
-  skip: function (req, res) {
-    return res.statusCode >= 400
-  },
-  stream: process.stdout
-}));
-var whitelist = [
-  new RegExp("(http://)?localhost:?(8080)?"),
-  new RegExp("(http://)?127.0.0.1:8080"),
-  new RegExp("(https?://)?ourlabels.org"),
-  /localhost:8080/
-];
+app.use(
+  morgan(loggerFormat, {
+    skip: function(req, res) {
+      return res.statusCode >= 400;
+    },
+    stream: process.stdout
+  })
+);
 
-var corsDelegate = function (req, callback) {
-  let i = 0;
-  if (!req.header('Origin')) {
-    callback(null, {origin: true, credentials: true})
-    return;
-  }
-  for (; i< whitelist.length; i++) {
-    if (req.header('Origin').match(whitelist[i])){
-      break;
+var whitelist = /^(https?:\/\/)?ourlabels\.org$/i;
+var corsOptions = {
+  origin: function(origin, callback) {
+    console.log("HERE IN CORS OPTIONS ORIGIN");
+    if (process.env.NODE_ENV !== "production") {
+      callback(null, true);
+    } else {
+      if (whitelist.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
     }
-  }
-  if (i < whitelist.length)
-    callback(null, {origin: true, credentials: true})
-  else
-    callback(null, {origin: false, credentials: true})
-}
-app.options('*', cors(corsDelegate))
-app.use(cors(corsDelegate));
+  },
+  credentials: true
+};
+
+app.options("*", cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
   require("express-session")({
@@ -74,9 +71,8 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(
-  new Strategy(function (username, password, cb) {
-    db.ourlabelusers
-      .findOne({ where: { username: { [Op.eq]: username } } })
+  new Strategy(function(username, password, cb) {
+    Users.findOne({ where: { username: { [Op.eq]: username } } })
       .then(user => {
         if (!user) {
           throw "";
@@ -88,9 +84,8 @@ passport.use(
       })
       .catch(err => {
         if (err === "") {
-          db.ourlabelusers
-            .findOne({ where: { email: { [Op.eq]: username } } })
-            .then(userbyemail => {
+          Users.findOne({ where: { email: { [Op.eq]: username } } }).then(
+            userbyemail => {
               if (!userbyemail) {
                 return cb(null, false);
               } else {
@@ -99,7 +94,8 @@ passport.use(
                 }
                 return cb(null, false);
               }
-            });
+            }
+          );
         }
       })
       .catch(err => {
@@ -114,14 +110,13 @@ passport.use(
   })
 );
 
-passport.serializeUser(function (user, cb) {
+passport.serializeUser(function(user, cb) {
   var sessionUser = { id: user.id, username: user.username, email: user.email };
   cb(null, sessionUser);
 });
 
-passport.deserializeUser(function (sessionUser, cb) {
-  db.ourlabelusers
-    .findOne({ where: { id: { [Op.eq]: sessionUser.id } } })
+passport.deserializeUser(function(sessionUser, cb) {
+  Users.findOne({ where: { id: { [Op.eq]: sessionUser.id } } })
     .then(user => {
       cb(null, user);
     })
@@ -135,14 +130,14 @@ passport.deserializeUser(function (sessionUser, cb) {
 app.use("/", index);
 
 // catch 404 and forward to error handler
-app.use(function (req, res, next) {
+app.use(function(req, res, next) {
   const err = new Error("Not Found");
   err.status = 404;
   next(err);
 });
 
 // error handler
-app.use(function (err, req, res, next) {
+app.use(function(err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};

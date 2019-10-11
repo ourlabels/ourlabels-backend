@@ -1,6 +1,5 @@
 const winston = require("winston");
-require("dotenv").config({ path: "../config/ourlabels.env" });
-const mongoose = require("../model/mongooseModels.js");
+const mongoose = require("../models/mongoose");
 const fs = require("fs");
 let project_id = 11;
 fs.mkdirSync(`./uploads/${project_id}`, {recursive: true});

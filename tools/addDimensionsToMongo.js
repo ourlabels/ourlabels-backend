@@ -1,5 +1,4 @@
-require("dotenv").config({ path: "../config/ourlabels.env" });
-const mongoose = require("../model/mongooseModels.js");
+const mongoose = require("../models/mongoose");
 const winston = require("winston");
 let project_id = 11;
 

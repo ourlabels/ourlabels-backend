@@ -4,21 +4,21 @@ const express = require("express");
 const multer = require("multer");
 const winston = require("winston");
 const ensure = require("connect-ensure-login");
-const mongoose = require("../../../model/mongooseModels");
-const db = require("../../../models");
-const Op = db.Sequelize.Op;
+const mongoose = require("../../../models/mongoose");
+const {Users, ProjectTypes, Projects} = require("../../../models/sequelize")
+const Op = require("sequelize").Op;
 const router = express.Router();
 const { MAX_SIZE } = require("../../constants");
 const { processSeqImages, listAllKeys, deleteBucket } = require("../../utils");
-const AWS = require("aws-sdk");
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_S3,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_S3
-});
-const s3 = new AWS.S3({
-  apiVersion: "2006-03-01",
-  region: "us-east-2"
-});
+// const AWS = require("aws-sdk");
+// AWS.config.update({
+//   accessKeyId: process.env.AWS_ACCESS_KEY_S3,
+//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_S3
+// });
+// const s3 = new AWS.S3({
+//   apiVersion: "2006-03-01",
+//   region: "us-east-2"
+// });
 
 var storage = multer.diskStorage({
   destination: function(req, file, cb) {
@@ -114,7 +114,7 @@ router.post(
       if (testarray.includes(null) || testarray.includes("")) {
         throw "400";
       }
-      let project = await db.projects.findOne({
+      let project = await Projects.findOne({
         where: {
           [Op.and]: [
             { id: { [Op.eq]: parseInt(projectId) } },
@@ -129,14 +129,14 @@ router.post(
       if (req.body.allowed != null) {
         reqallowed = req.body.allowed;
       }
-      let allowedUsers = await db.ourlabelusers.findAll({
+      let allowedUsers = await Users.findAll({
         where: { username: { [Op.in]: reqallowed } }
       });
       let reqrefused = [];
       if (req.body.refused != null) {
         reqrefused = req.body.refused;
       }
-      let refusedUsers = await db.ourlabelusers.findAll({
+      let refusedUsers = await Users.findAll({
         where: { username: { [Op.in]: reqrefused } }
       });
       for (let refusedUser of refusedUsers) {
@@ -159,7 +159,7 @@ router.post(
       if (req.body.requested != null) {
         reqrequested = req.body.requested;
       }
-      let requestedUsers = await db.ourlabelusers.findAll({
+      let requestedUsers = await Users.findAll({
         where: { username: { [Op.in]: reqrequested } }
       });
       let allowed = allowedUsers.map(user => {
@@ -172,7 +172,7 @@ router.post(
         return user.id;
       });
       let projectOwner = project.owner;
-      let newOwner = await db.ourlabelusers.findOne({
+      let newOwner = await Users.findOne({
         where: { username: { [Op.eq]: owner } }
       });
 
@@ -180,7 +180,7 @@ router.post(
         projectOwner = newOwner.id;
       }
 
-      let newType = await db.project_types.findOne({
+      let newType = await ProjectTypes.findOne({
         where: { id: { [Op.eq]: parseInt(type) } }
       });
       let projectType = project.type;
