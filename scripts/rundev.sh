@@ -1,5 +1,6 @@
 #!/bin/sh
-until nc -z -w 2 $POSTGRES_HOST 5432; do sleep 30; done
-until nc -z -w 2 $MONGO_HOST 2717; do sleep 30; done
+echo HERE
+until nc -z -v -w 2 $POSTGRES_HOST 5432; do sleep 10; done
+until nc -z -v -w 2 $MONGO_HOST 27017; do sleep 10; done
 npm install
-npm run start
+DEBUG=ourlabels:server npm run start

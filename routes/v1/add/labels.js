@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const { validationResult, checkSchema } = require("express-validator/check");
+const { validationResult, checkSchema } = require("express-validator");
 const { labelsSchema } = require("../../constants");
 const mongoose = require("../../../models/mongoose");
 router.post(

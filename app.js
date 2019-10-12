@@ -1,50 +1,50 @@
-const express = require("express");
-const path = require("path");
-const morgan = require("morgan");
-const cookieParser = require("cookie-parser");
-const bodyParser = require("body-parser");
-const passport = require("passport");
-const Strategy = require("passport-local").Strategy;
-const { Users } = require("./models/sequelize");
-const Op = require("sequelize").Op;
-const bcrypt = require("bcrypt");
-const index = require("./routes/index");
-const winston = require("winston");
-const app = express();
+const path = require("path")
 const cors = require("cors");
+const logger = require("morgan");
+const express = require("express");
+const passport = require("passport");
+const bodyParser = require("body-parser");
+const session = require("express-session");
+const createError = require("http-errors");
+const cookieParser = require("cookie-parser");
+const LocalStrategy = require("passport-local").Strategy;
+const Account = require("./models/account");
+const index = require("./routes/index");
+const app = express();
 
-app.use(cookieParser());
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "pug");
+app.use(logger("dev"));
+app.use('/static', express.static(path.join(__dirname, 'public', 'static')))
+/**
+ * Only user application/json body parser... no form encoding
+ */
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-morgan.token("id", function getId(req) {
-  return req.id;
-});
-const loggerFormat =
-  ':id [:date[web]] ":method :url" :status :response-time ms';
+
+/**
+ * User cookie parser because session is in cookie
+ */
+app.use(cookieParser());
+
+/**
+ * Sessions are in cookie
+ */
 app.use(
-  morgan(loggerFormat, {
-    skip: function(req, res) {
-      return res.statusCode < 400;
-    },
-    stream: process.stderr
+  session({
+    secret: process.env.SECRET,
+    saveUninitialized: true,
+    resave: false,
+    cookie: {
+      domain: ".ourlabels.org"
+    }
   })
 );
 
-app.use(
-  morgan(loggerFormat, {
-    skip: function(req, res) {
-      return res.statusCode >= 400;
-    },
-    stream: process.stdout
-  })
-);
 
-var whitelist = /^(https?:\/\/)?ourlabels\.org$/i;
+/**
+ * Cors configuration
+ */
+var whitelist = /^https?:\/\/([a-z]+.)?ourlabels.org$/i;
 var corsOptions = {
   origin: function(origin, callback) {
-    console.log("HERE IN CORS OPTIONS ORIGIN");
     if (process.env.NODE_ENV !== "production") {
       callback(null, true);
     } else {
@@ -57,87 +57,32 @@ var corsOptions = {
   },
   credentials: true
 };
-
-app.options("*", cors(corsOptions));
 app.use(cors(corsOptions));
-app.use(express.static(path.join(__dirname, "public")));
-app.use(
-  require("express-session")({
-    secret: process.env.SECRET,
-    resave: false,
-    saveUninitialized: true
-  })
+
+/**
+ * Passport configuration... once registered will be found by routes
+ */
+passport.use(
+  "local",
+  new LocalStrategy({ passReqToCallback: true }, Account.authorize)
 );
+passport.serializeUser(Account.serializeUser);
+passport.deserializeUser(Account.deserializeUser);
 app.use(passport.initialize());
 app.use(passport.session());
-passport.use(
-  new Strategy(function(username, password, cb) {
-    Users.findOne({ where: { username: { [Op.eq]: username } } })
-      .then(user => {
-        if (!user) {
-          throw "";
-        }
-        if (bcrypt.compareSync(password, user.password)) {
-          return cb(null, user);
-        }
-        return cb(null, false);
-      })
-      .catch(err => {
-        if (err === "") {
-          Users.findOne({ where: { email: { [Op.eq]: username } } }).then(
-            userbyemail => {
-              if (!userbyemail) {
-                return cb(null, false);
-              } else {
-                if (bcrypt.compareSync(password, userbyemail.password)) {
-                  return cb(null, userbyemail);
-                }
-                return cb(null, false);
-              }
-            }
-          );
-        }
-      })
-      .catch(err => {
-        winston.log(
-          "error",
-          "error while trying to log in username:",
-          username,
-          err
-        );
-        return cb(null, false);
-      });
-  })
-);
 
-passport.serializeUser(function(user, cb) {
-  var sessionUser = { id: user.id, username: user.username, email: user.email };
-  cb(null, sessionUser);
-});
-
-passport.deserializeUser(function(sessionUser, cb) {
-  Users.findOne({ where: { id: { [Op.eq]: sessionUser.id } } })
-    .then(user => {
-      cb(null, user);
-    })
-    .catch(err => {
-      if (err) {
-        return cb(err);
-      }
-    });
-});
-
+/**
+ * Add root routes
+ */
 app.use("/", index);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
-  const err = new Error("Not Found");
-  err.status = 404;
-  next(err);
+  next(createError(404));
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function(err, req, res) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};

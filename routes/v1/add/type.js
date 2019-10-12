@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const { validationResult, checkSchema } = require("express-validator/check");
+const { validationResult, checkSchema } = require("express-validator");
 const { ProjectTypes } = require("../../../models/sequelize");
 const Op = require("sequelize").Op;
 const { typeSchema } = require("../../constants");

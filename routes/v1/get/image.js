@@ -21,7 +21,6 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
     if (project_id == null || seq == null) {
       throw "400";
     }
-    console.log(idx)
     let avail = await mongoose.Projects.aggregate([
       { $match: { project_id } },
       { $unwind: "$sequences" },
@@ -35,7 +34,6 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
         }
       }
     ]);
-    console.log(avail)
     if (avail == null || avail.length === 0 || avail[0].images.length === 0) {
       res.status(404).json({ success: false, error: "no photo that matches" });
     } else {

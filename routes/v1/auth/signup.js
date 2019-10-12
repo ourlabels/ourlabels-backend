@@ -3,11 +3,11 @@ const uuidv1 = require("uuid/v1");
 const express = require("express");
 const router = express.Router();
 const winston = require("winston");
-const {Users} = require("../../../models/sequelize");
+const { Users } = require("../../../models/sequelize");
 const Op = require("sequelize").Op;
 const { SALT_ROUNDS } = require("../../constants");
 const { userContent } = require("../../utils");
-const { validationResult, checkSchema } = require("express-validator/check");
+const { validationResult, checkSchema } = require("express-validator");
 const { signupSchema } = require("../../constants");
 
 router.post("/", checkSchema(signupSchema), async function(req, res) {
@@ -16,7 +16,9 @@ router.post("/", checkSchema(signupSchema), async function(req, res) {
     try {
       user = await Users.findOne({
         where: {
-          username: req.body.username
+          username: {
+            [Op.eq]: req.body.username
+          }
         }
       });
       if (user != null) {
@@ -47,16 +49,22 @@ router.post("/", checkSchema(signupSchema), async function(req, res) {
     } catch (err) {
       switch (err) {
       case "usernameexists":
-        return res.status(400).json({success: false, error: "username already exists"})
+        return res
+          .status(400)
+          .json({ success: false, error: "username already exists" });
       case "emailexists":
-        return res.status(400).json({success: false, error: "email already exists"})
+        return res
+          .status(400)
+          .json({ success: false, error: "email already exists" });
       default:
-        return res.status(500).json({success: false, error: err})
+        return res.status(500).json({ success: false, error: err });
       }
     }
   } else {
     // no info
-    return res.status(400).json({success: false, error: validationResult(req).array()})
+    return res
+      .status(400)
+      .json({ success: false, error: validationResult(req).array() });
   }
 });
 

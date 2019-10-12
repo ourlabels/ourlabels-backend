@@ -1,4 +1,4 @@
-const { oneOf, check } = require("express-validator/check");
+const { oneOf, check } = require("express-validator");
 
 module.exports = oneOf([
   [

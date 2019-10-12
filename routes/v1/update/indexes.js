@@ -2,7 +2,7 @@ const express = require("express");
 const winston = require("winston");
 const ensure = require("connect-ensure-login");
 const router = express.Router();
-const { validationResult } = require("express-validator/check");
+const { validationResult } = require("express-validator");
 const { indexSchema } = require("../../constants");
 
 router.post("/", ensure.ensureLoggedIn(), indexSchema, async (req, res) => {

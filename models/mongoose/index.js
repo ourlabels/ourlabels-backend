@@ -1,6 +1,13 @@
 "use strict";
 const mongoose = require("mongoose");
-let uri = process.env.MONGO_URI;
+const {
+  MONGO_CONNECTION_TYPE,
+  MONGO_HOST,
+  MONGO_INITDB_DATABASE,
+  MONGO_INITDB_ROOT_USERNAME,
+  MONGO_INITDB_ROOT_PASSWORD
+} = process.env;
+const mongo_uri = `${MONGO_CONNECTION_TYPE}://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}`;
 mongoose.Promise = require("bluebird");
 
 const BoxSchema = new mongoose.Schema({
@@ -86,16 +93,25 @@ const LabelSetsSchema = new mongoose.Schema(
   },
   { collection: "LabelSets" }
 );
-
-const Projects = mongoose.model("Projects", ProjectSchema);
-const LabelSets = mongoose.model("LabelSets", LabelSetsSchema);
-
-mongoose.connect(
-  uri,
-  { useNewUrlParser: true, useCreateIndex: true }
+const db = mongoose.createConnection(
+  mongo_uri,
+  {
+    dbName: MONGO_INITDB_DATABASE,
+    useUnifiedTopology: true,
+    useNewUrlParser: true,
+    useCreateIndex: true
+  },
+  err => {
+    if (err) {
+      console.log(`Mongoose Error: ${err}`);
+    }
+  }
 );
+
+const Projects = db.model("Projects", ProjectSchema, "Projects");
+const LabelSets = db.model("LabelSets", LabelSetsSchema, "LabelSets");
 module.exports = {
-  Projects: Projects,
-  LabelSets: LabelSets,
+  Projects,
+  LabelSets,
   ObjectId: mongoose.Types.ObjectId
 };

@@ -4,7 +4,7 @@ const ensure = require("connect-ensure-login");
 const { Projects, ProjectTypes } = require("../../../models/sequelize");
 const fs = require("fs");
 const Op = require("sequelize").Op;
-const { validationResult, checkSchema } = require("express-validator/check");
+const { validationResult, checkSchema } = require("express-validator");
 const { projectSchema } = require("../../constants");
 
 router.post(

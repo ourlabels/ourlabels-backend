@@ -22,7 +22,6 @@ const modifyProject = async () => {
       }
     }
     await mongoProject.save()
-    console.log("DONE")
   } catch (err) {
     console.log("error", err);
   }

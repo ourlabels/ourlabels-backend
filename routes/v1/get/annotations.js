@@ -6,7 +6,7 @@ const router = express.Router();
 const ensure = require("connect-ensure-login");
 const { Projects } = require("../../../models/sequelize");
 const mongoose = require("../../../models/mongoose");
-const { validationResult, checkSchema } = require("express-validator/check");
+const { validationResult, checkSchema } = require("express-validator");
 const { getAnnotationsSchema } = require("../../constants");
 const builder = require("xmlbuilder");
 

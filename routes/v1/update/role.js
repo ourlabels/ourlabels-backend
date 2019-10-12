@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const ensure = require("connect-ensure-login");
+const passport = require("passport")
 const { Users } = require("../../../models/sequelize");
 const Op = require("sequelize").Op;
 
-router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
+router.post("/", passport.authorize('local'), async (req, res) => {
   try {
     const { username, role_to_change_to } = req.body;
     if (
