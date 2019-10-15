@@ -1,4 +1,4 @@
-const path = require("path")
+const path = require("path");
 const cors = require("cors");
 const logger = require("morgan");
 const express = require("express");
@@ -10,10 +10,23 @@ const cookieParser = require("cookie-parser");
 const LocalStrategy = require("passport-local").Strategy;
 const Account = require("./models/account");
 const index = require("./routes/index");
+const redis = require("redis");
 const app = express();
 
 app.use(logger("dev"));
-app.use('/static', express.static(path.join(__dirname, 'public', 'static')))
+// app.use("/static", express.static(path.join(__dirname, "public", "static")));
+
+/**
+ * Redis setup for session storage
+ */
+
+let RedisStore = require("connect-redis")(session);
+let client = redis.createClient({
+  host: process.env.REDIS_HOST,
+  password: process.env.REDIS_PASSWORD,
+  port: process.env.REDIS_PORT
+});
+
 /**
  * Only user application/json body parser... no form encoding
  */
@@ -25,19 +38,29 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 /**
- * Sessions are in cookie
+ * Sessions are in cookie, only give a domain if production
  */
-app.use(
-  session({
-    secret: process.env.SECRET,
-    saveUninitialized: true,
-    resave: false,
-    cookie: {
-      domain: ".ourlabels.org"
-    }
-  })
-);
-
+if (process.env.NODE_ENV === "production") {
+  app.use(
+    session({
+      store: new RedisStore({ client }),
+      secret: process.env.SECRET,
+      saveUninitialized: true,
+      resave: false,
+      cookie: {
+        domain: ".ourlabels.org"
+      }
+    })
+  );
+} else {
+  app.use(
+    session({
+      secret: process.env.SECRET,
+      saveUninitialized: true,
+      resave: false
+    })
+  );
+}
 
 /**
  * Cors configuration
@@ -64,7 +87,7 @@ app.use(cors(corsOptions));
  */
 passport.use(
   "local",
-  new LocalStrategy({ passReqToCallback: true }, Account.authorize)
+  new LocalStrategy({ passReqToCallback: true }, Account.authenticate)
 );
 passport.serializeUser(Account.serializeUser);
 passport.deserializeUser(Account.deserializeUser);

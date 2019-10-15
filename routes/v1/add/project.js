@@ -4,6 +4,7 @@ const ensure = require("connect-ensure-login");
 const { Projects, ProjectTypes } = require("../../../models/sequelize");
 const fs = require("fs");
 const Op = require("sequelize").Op;
+const mongoose = require("../../../models/mongoose")
 const { validationResult, checkSchema } = require("express-validator");
 const { projectSchema } = require("../../constants");
 
@@ -13,8 +14,8 @@ router.post(
   checkSchema(projectSchema),
   async (req, res) => {
     try {
-      if (req.user.role === "ROLE_USER" || req.user.role === "ROLE_BARRED") {
-        return;
+      if (req.user.role === "ROLE_BARRED") {
+        return res.status(401).json({success: false, error: "User is not allowed to create project."})
       }
       let project = await Projects.findOne({
         where: { title: { [Op.eq]: req.body.title } }
@@ -30,10 +31,10 @@ router.post(
         if (errors.length > 0) {
           throw "400";
         }
-        let type = await ProjectTypes.findOne({
-          where: { id: { [Op.eq]: req.body.type } }
+        let projectType = await ProjectTypes.findOne({
+          where: { id: { [Op.eq]: req.body.projectType } }
         });
-        if (!type) {
+        if (!projectType) {
           throw "404";
         }
         let new_project = await Projects.build({
@@ -41,8 +42,8 @@ router.post(
           description: req.body.description,
           full_description: req.body.full_description,
           allowed: [req.user.id],
-          public: req.body.public,
-          type: type.id,
+          public: !req.body.privateType,
+          type: projectType.id,
           requested: [],
           refused: [],
           owner: req.user.id
@@ -54,12 +55,16 @@ router.post(
           owned_projects: projects,
           current_project: new_project.id
         });
+        const mongooseProject = await mongoose.Projects.create({
+          project_id: new_project.id
+        })
         let proj = {
           title: new_project.title,
           description: new_project.description,
           full_description: new_project.full_description,
           allowed: new_project.allowed,
-          owner: new_project.owner
+          owner: new_project.owner,
+          mongo_id: mongooseProject.id.toString()
         };
         fs.mkdirSync(`../../uploads/${new_project.id}`, { recursive: true });
         res.status(200).json({ success: true, project: proj });

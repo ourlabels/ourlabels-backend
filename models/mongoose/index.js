@@ -24,10 +24,10 @@ const BoxSchema = new mongoose.Schema({
 
 const ClassificationSchema = new mongoose.Schema({
   userid: {
-    type: String,
+    type: Number,
     index: true
   },
-  verified_id: String, // id of user verified
+  verified_id: Number, // id of user verified
   verified_date: Date,
   type: Number, // 0 for labeling, 1 for verification of labeling, 2 for analysis of sign,
   boxes: {
@@ -40,7 +40,7 @@ const ClassificationSchema = new mongoose.Schema({
 const ImageSchema = new mongoose.Schema(
   {
     userid: {
-      type: String,
+      type: Number,
       index: true
     },
     file: String, // not the full path, but the file name

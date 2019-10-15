@@ -7,19 +7,19 @@ module.exports = {
   description: {
     in: ["body"],
     exists: true,
-    isAlphanumeric: true
+    isString: true
   },
   full_description: {
     in: ["body"],
     exists: true,
-    isAlphanumeric: true
+    isString: true
   },
-  public: {
+  privateType: {
     in: ["body"],
     exists: true,
     isBoolean: true
   },
-  type: {
+  projectType: {
     in: ["body"],
     exists: true,
     isInt: {

@@ -1,7 +1,7 @@
 const express = require("express");
 const ensure = require("connect-ensure-login");
 const mongoose = require("../../../models/mongoose");
-const { Users } = require("../../../models/sequelize");
+const db = require("../../../models/sequelize");
 const Op = require("sequelize").Op;
 const router = express.Router();
 
@@ -34,7 +34,7 @@ router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
       // cannot verify your own annotations
       throw "401";
     }
-    let verified_user = await Users.findOne({
+    let verified_user = await  db.Users.findOne({
       where: { id: { [Op.eq]: classification.userid } }
     });
     if (!verified_user) {
@@ -54,7 +54,7 @@ router.post("/", ensure.ensureLoggedIn(), async (req, res) => {
     ].verified_id = req.user.id;
     project.sequences[seq_index].images[idx].classifications[
       idx_last_classification
-    ].verified_date = req.user.id;
+    ].verified_date = new Date();
     await project.save();
     return res.status(200).json({ success: true });
   } catch (err) {

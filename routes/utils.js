@@ -15,7 +15,23 @@ const s3 = new AWS.S3({
   region: "us-east-2"
 });
 const winston = require("winston");
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.json(),
+  defaultMeta: { service: "testing" },
+  transports: [
+    new winston.transports.File({ filename: "error.log", level: "error" }),
+    new winston.transports.File({ filename: "combined.log" })
+  ]
+});
 
+if (process.env.NODE_ENV !== "production") {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  );
+}
 function checkName(filePath, isVideo) {
   const filePathSplit = filePath.split("/");
   const filename = filePathSplit[filePathSplit.length - 1];
@@ -99,18 +115,19 @@ const deleteBucket = async (keys, projectId, seqId, path) => {
           Delete: { Objects: deleteKeys }
         })
         .promise();
-      winston.log("error", `DELETED: ${objectData.length} objects`);
+      logger.error(`DELETED: ${objectData.length} objects`);
     }
     let bucketOptions = { Bucket: `ourlabels-${projectId}-${seqId}` };
     const exists = await checkBucketExists(bucketOptions);
     if (exists) {
       let data = await s3.deleteBucket(bucketOptions).promise();
-      winston.log("error", "DELETE:" + data.length);
+      logger.error("DELETE:" + data.length);
     } else {
-      console.log("CANNOT DELETE:", bucketOptions);
+      logger.error(`CANNOT DELETE: ${JSON.stringify(bucketOptions)}`);
     }
   } catch (err) {
     console.log("ERR4: ", err);
+    logger.error(`ERR4: ${JSON.stringify(err)}`);
   }
 };
 
@@ -144,13 +161,11 @@ const listAllKeys = (token, projectId, seqId, path, accumulator, cb) => {
 };
 
 function decompressContent(filePath, newDirectory, isVideo, mimetype) {
-  winston.log(
-    "error",
-    "line 145: fpath: " + filePath + " mime:",
-    mimetype + " newDir:" + newDirectory
+  logger.error(
+    `ERROR, decompressContent(), fpath: ${filePath}, mime: ${mimetype}, newDir: ${newDirectory}`
   );
   if (mimetype === "application/gzip") {
-    winston.log("error", "in tar");
+    logger.error("IN TAR");
     try {
       try {
         const taroutput = spawnSync(
@@ -159,15 +174,15 @@ function decompressContent(filePath, newDirectory, isVideo, mimetype) {
           { shell: true }
         );
         if (taroutput.status !== 0) {
-          winston.log("error", "not tar");
+          logger.error("not tar");
           throw "Could not decompress with tar";
         }
       } catch (tarError) {
-        winston.log("error", "ERROR in tar");
+        logger.error("ERROR in tar");
         try {
           const gunzipoutput = spawnSync("gunzip", [filePath]);
           if (gunzipoutput.status !== 0) {
-            winston.log("Could not decompress archive");
+            logger.error("Could not decompress archive");
             throw "Could not decompress archive";
           }
         } catch (gzError) {
@@ -208,7 +223,7 @@ function decompressContent(filePath, newDirectory, isVideo, mimetype) {
         }
       }
     } catch (allError) {
-      winston.log("error", "Got all error in bunzip2:" + allError);
+      logger.error("Got all error in bunzip2:" + allError);
       // Was bzip2 archive but cannot decompress!
       if (fs.existsSync(newDirectory)) {
         spawnSync("rm", ["-rf", newDirectory]);
@@ -219,7 +234,7 @@ function decompressContent(filePath, newDirectory, isVideo, mimetype) {
   const ls_output = spawnSync("ls", ["-1", newDirectory]);
   if (ls_output.status !== 0) {
     if (fs.existsSync(newDirectory)) {
-      winston.log("error", "Error in ls on line 214");
+      logger.error("Error in ls on line 214");
       spawnSync("rm", ["-rf", newDirectory]);
     }
     return null;
@@ -236,11 +251,7 @@ function decompressContent(filePath, newDirectory, isVideo, mimetype) {
         !file.endsWith("bz2")
       );
     });
-  winston.log(
-    "error",
-    "FILES EXIST FROM LS:",
-    JSON.stringify(files_decompressed)
-  );
+  logger.error("FILES EXIST FROM LS:" + JSON.stringify(files_decompressed));
   if (isVideo) {
     if (files_decompressed.length > 1 || files_decompressed.length === 0) {
       if (fs.existsSync(filePath)) {

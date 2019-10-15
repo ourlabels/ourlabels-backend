@@ -1,9 +1,9 @@
-const bcrypt = require("bcrypt");
+const argon2 = require("argon2");
 const winston = require("winston");
-const { Users } = require("../sequelize");
+const db = require("../sequelize");
 const Op = require("sequelize").Op;
 
-const wlogger = winston.createLogger({
+const logger = winston.createLogger({
   level: "info",
   format: winston.format.json(),
   defaultMeta: { service: "testing" },
@@ -14,49 +14,33 @@ const wlogger = winston.createLogger({
 });
 
 if (process.env.NODE_ENV !== "production") {
-  wlogger.add(
+  logger.add(
     new winston.transports.Console({
       format: winston.format.simple()
     })
   );
 }
 
-function authorize(req, username, password, done) {
-  Users.findOne({ where: { username: { [Op.eq]: username } } })
-    .then(user => {
-      if (!user) {
-        throw "";
-      }
-      if (bcrypt.compareSync(password, user.password)) {
-        return done(null, user);
-      }
-      return done(null, false);
-    })
-    .catch(err => {
-      if (err === "") {
-        Users.findOne({ where: { email: { [Op.eq]: username } } }).then(
-          userbyemail => {
-            if (!userbyemail) {
-              return done(null, false);
-            } else {
-              if (bcrypt.compareSync(password, userbyemail.password)) {
-                return done(null, userbyemail);
-              }
-              return done(null, false);
-            }
-          }
-        );
-      }
-    })
-    .catch(err => {
-      winston.log(
-        "error",
-        "error while trying to log in username:",
-        username,
-        err
-      );
-      return done(null, false);
+async function authenticate(req, username, password, done) {
+  try {
+    let user = await db.Users.findOne({
+      where: { username: { [Op.eq]: username } }
     });
+    if (!user) {
+      user = await db.Users.findOne({ where: { email: { [Op.eq]: username } } });
+      if (!user) {
+        return done(false, null);
+      }
+    }
+    const valid = await argon2.verify(user.password, password);
+    if (valid) {
+      return done(null, user)
+    }
+    return done(null, false)
+  } catch (err) {
+    logger.error(`LOGIN ERROR: ${JSON.stringify(err)}`)
+    return done(false, null)
+  }
 }
 
 function serializeUser(user, cb) {
@@ -65,7 +49,7 @@ function serializeUser(user, cb) {
 }
 
 function deserializeUser(sessionUser, cb) {
-  Users.findOne({ where: { id: { [Op.eq]: sessionUser.id } } })
+  db.Users.findOne({ where: { id: { [Op.eq]: sessionUser.id } } })
     .then(user => {
       cb(null, user);
     })
@@ -76,4 +60,4 @@ function deserializeUser(sessionUser, cb) {
     });
 }
 
-module.exports = { authorize, serializeUser, deserializeUser };
+module.exports = { authenticate, serializeUser, deserializeUser };

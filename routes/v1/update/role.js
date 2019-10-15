@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport")
-const { Users } = require("../../../models/sequelize");
+const db = require("../../../models/sequelize");
 const Op = require("sequelize").Op;
 
 router.post("/", passport.authorize('local'), async (req, res) => {
@@ -18,7 +18,7 @@ router.post("/", passport.authorize('local'), async (req, res) => {
       });
     }
     let roles = ["ROLE_USER", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_OWNER"];
-    let user_to_change = Users.findOne({
+    let user_to_change =  db.Users.findOne({
       where: { username: { [Op.eq]: username } }
     });
     if (
