@@ -3,7 +3,7 @@ const router = express.Router();
 const passport = require("passport");
 const { userContent } = require("../../utils");
 router.get("/", function(req, res) {
-  res.status(200);
+  res.status(200).send({});
 });
 router.post(
   "/",

@@ -1,22 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const ensure = require("connect-ensure-login");
-const {Users, Projects} = require("../../../models/sequelize")
+const db = require("../../../models/sequelize");
 const mongoose = require("../../../models/mongoose");
 const Op = require("sequelize").Op;
-const getSize = (images) => {
-  let size = 0
+const getSize = images => {
+  let size = 0;
   for (let image of images) {
-    size += image.size
+    size += image.size;
   }
   return size;
-}
+};
 
 router.get("/guest", async (req, res) => {
   try {
     let projects;
     let accumulator = [];
-    projects = await Projects.findAll({
+    projects = await db.Projects.findAll({
       where: { public: true }
     });
     projects.forEach(project => {
@@ -42,7 +42,7 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
     let projects;
     let accumulator = [];
     if (req.user) {
-      projects = await Projects.findAll({
+      projects = await db.Projects.findAll({
         where: {
           [Op.or]: [
             { public: true },
@@ -80,7 +80,7 @@ router.get("/", ensure.ensureLoggedIn(), async (req, res) => {
 });
 router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
   try {
-    let project = await Projects.findOne({
+    let project = await db.Projects.findOne({
       where: {
         [Op.and]: [
           { id: { [Op.eq]: req.user.current_project } },
@@ -88,8 +88,14 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
         ]
       }
     });
+    if (process.env.DEBUG === "true") {
+      console.log(`PROJECT SEQUELIZE ${JSON.stringify(project)} ${project.id}`);
+    }
     if (!project) {
-      throw "No project with project id or of which you are the owner specified";
+      return res.status(404).json({
+        success: false,
+        error: "No current project or project is not owned by you."
+      });
     }
     let projectInfo = await mongoose.Projects.aggregate([
       {
@@ -106,6 +112,9 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
         }
       }
     ]);
+    if (process.env.DEBUG === "true") {
+      console.log(`PROJECT INFO: ${JSON.stringify(projectInfo)}`);
+    }
     let sequencenames = [];
     if (projectInfo.length > 0) {
       sequencenames = projectInfo[0].sequences.map(sequence => {
@@ -122,9 +131,18 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
     let concatenated = project.requested
       .concat(project.refused)
       .concat(project.allowed);
-    let users = await Users.findAll({
-      where: { id: { [Op.any]: concatenated } }
-    });
+    console.log(concatenated, Array.isArray(concatenated));
+    let users = [];
+    if (concatenated.length > 1) {
+      users = await db.Users.findAll({
+        where: { id: { [Op.any]: concatenated } }
+      });
+    } else {
+      users = await db.Users.findAll({ where: { id: concatenated[0] } });
+    }
+    if (process.env.DEBUG === "true") {
+      console.log(`LIST OF USERS: ${JSON.stringify(users)}`);
+    }
     let requested = [];
     let allowed = [];
     let refused = [];
@@ -146,7 +164,12 @@ router.get("/update", ensure.ensureLoggedIn(), async (req, res) => {
       requested,
       publicType: project.public,
       type: project.type,
-      maxSize: req.user.role === "ROLE_ADMIN" ? 25.0 : req.user.role === "ROLE_MANAGER" ? 100.0 : 200.0,
+      maxSize:
+        req.user.role === "ROLE_ADMIN"
+          ? 25.0
+          : req.user.role === "ROLE_MANAGER"
+          ? 100.0
+          : 200.0,
       sequencenames
     });
   } catch (err) {

@@ -16,6 +16,14 @@ services:
       - ../config/ourlabels-dev.env
     ports:
       - "27017:27017"
+  redis:
+    hostname: redis
+    image: bitnami/redis:latest
+    restart: always
+    env_file:
+      - ../config/ourlabels-dev.env
+    ports:
+      - "6379:6379"
   backend:
     build: .
     image: ourlabels/ourlabels-backend
@@ -23,13 +31,16 @@ services:
     depends_on:
       - "postgres"
       - "mongo"
+      - "redis"
     env_file: 
       - ../config/ourlabels-dev.env
     volumes: 
       - .:/ourlabels-backend
+      - ../config:/config
     command: ['sh','/ourlabels-backend/scripts/rundev.sh']
     ports:
       - "59003:59003"
     links:
       - "postgres"
       - "mongo"
+      - "redis"

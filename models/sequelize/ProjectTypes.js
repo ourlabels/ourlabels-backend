@@ -1,12 +1,7 @@
-const { Model, DataTypes } = require("sequelize");
-
-/**
- *
- * @param {Sequelize} sequelize Sequelize instance
- */
-const CreateProjectTypes = sequelize => {
-  class ProjectTypes extends Model {}
-  ProjectTypes.init(
+"use strict";
+module.exports = (sequelize, DataTypes) => {
+  const ProjectTypes = sequelize.define(
+    "ProjectTypes",
     {
       type: {
         type: DataTypes.STRING
@@ -17,9 +12,10 @@ const CreateProjectTypes = sequelize => {
         defaultValue: false
       }
     },
-    { sequelize, modelName: "project_types" }
+    {}
   );
+  ProjectTypes.associate = function(models) {
+    // associations can be defined here
+  };
   return ProjectTypes;
 };
-
-module.exports = { CreateProjectTypes };
