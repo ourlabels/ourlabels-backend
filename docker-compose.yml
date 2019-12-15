@@ -1,0 +1,26 @@
+version: "3"
+
+services:
+  redis:
+    hostname: redis
+    image: bitnami/redis:latest
+    restart: always
+    env_file:
+      - ../config/ourlabels.env
+    ports:
+      - "6379:6379"
+  backend:
+    build: .
+    image: ourlabels/ourlabels-backend
+    hostname: backend
+    depends_on:
+      - "redis"
+    env_file: 
+      - ../config/ourlabels.env
+    volumes: 
+      - ../config:/config
+    command: ['sh','/ourlabels-backend/scripts/runprod.sh']
+    ports:
+      - "59003:59003"
+    links:
+      - "redis"
